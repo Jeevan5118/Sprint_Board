@@ -1,7 +1,8 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { Trash2 } from 'lucide-react';
 
-const TaskCard = ({ task, onClick, isOverlay }) => {
+const TaskCard = ({ task, onClick, onDelete, isOverlay }) => {
     const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
         id: `task-${task.id}`,
         data: { ...task, type: 'task' }
@@ -44,11 +45,24 @@ const TaskCard = ({ task, onClick, isOverlay }) => {
         >
             <div className="flex justify-between items-start mb-2 gap-2">
                 <h4 className="text-sm font-semibold text-slate-900 leading-tight flex-1">{task.title}</h4>
-                {task.project_name && (
-                    <span className="text-[9px] font-black uppercase tracking-tighter bg-amber-50 text-amber-600 border border-amber-100 px-1.5 py-0.5 rounded-md flex-shrink-0">
-                        {task.project_name}
-                    </span>
-                )}
+                <div className="flex items-center gap-1">
+                    {task.project_name && (
+                        <span className="text-[9px] font-black uppercase tracking-tighter bg-amber-50 text-amber-600 border border-amber-100 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                            {task.project_name}
+                        </span>
+                    )}
+                    {onDelete && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(task.id);
+                            }}
+                            className="p-1 text-slate-300 hover:text-danger-red hover:bg-danger-red/5 rounded transition-colors"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {task.description && (

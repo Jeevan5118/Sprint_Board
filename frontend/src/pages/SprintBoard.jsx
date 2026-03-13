@@ -20,7 +20,7 @@ import TaskModal from '../components/sprint/TaskModal';
 
 const COLUMNS = ['To Do', 'In Progress', 'Review', 'Done'];
 
-const DroppableColumn = ({ id, tasks, onTaskClick }) => {
+const DroppableColumn = ({ id, tasks, onTaskClick, onDeleteTask }) => {
     const { isOver, setNodeRef } = useDroppable({
         id,
         data: { status: id }
@@ -34,7 +34,7 @@ const DroppableColumn = ({ id, tasks, onTaskClick }) => {
                 </span>
             </div>
             <div ref={setNodeRef} className={`flex-1 p-3 overflow-y-auto transition-colors ${isOver ? 'bg-primary-blue/5 border-primary-blue/20' : ''}`}>
-                {tasks.map(t => <TaskCard key={t.id} task={t} onClick={onTaskClick} />)}
+                {tasks.map(t => <TaskCard key={t.id} task={t} onClick={onTaskClick} onDelete={onDeleteTask} />)}
                 {tasks.length === 0 && (
                     <div className="h-20 border-2 border-dashed border-slate-200 rounded-lg flex items-center justify-center text-sm text-slate-400">
                         Drop sprint tasks
@@ -143,6 +143,17 @@ const SprintBoard = () => {
         }
     };
 
+    const handleDeleteTask = async (taskId) => {
+        if (!window.confirm('Delete this task?')) return;
+        try {
+            await api.delete(`/teams/${teamId}/tasks/${taskId}`);
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            toast.success('Task deleted');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to delete task');
+        }
+    };
+
     const handleCompleteSprint = async () => {
         if (!activeSprint || !window.confirm(`Complete "${activeSprint.name}"?`)) return;
         try {
@@ -195,7 +206,7 @@ const SprintBoard = () => {
                 >
                     <div className="flex space-x-6 h-[calc(100vh-14rem)]">
                         {COLUMNS.map(col => (
-                            <DroppableColumn key={col} id={col} tasks={tasks.filter(t => t.status === col)} onTaskClick={handleTaskClick} />
+                            <DroppableColumn key={col} id={col} tasks={tasks.filter(t => t.status === col)} onTaskClick={handleTaskClick} onDeleteTask={canManage ? handleDeleteTask : null} />
                         ))}
                     </div>
                     <DragOverlay>

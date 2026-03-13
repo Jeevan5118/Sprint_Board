@@ -8,7 +8,7 @@ dotenv.config();
 const { Pool } = pg;
 
 // Use your Railway URL from .env
-const connectionString = process.env.postgresql://postgres:zRUvAMkJhtjWBKmXVTeWCKigTNPxAPic@shortline.proxy.rlwy.net:42052/railway;
+const connectionString = process.env.DATABASE_URL; // Corrected to use DATABASE_URL from .env
 
 if (!connectionString || connectionString.trim() === '' || connectionString.includes('localhost')) {
     console.error("❌ Error: Please paste your Railway DATABASE_URL in the backend/.env file first!");
@@ -18,8 +18,8 @@ if (!connectionString || connectionString.trim() === '' || connectionString.incl
 // - [x] Implement case-insensitive login [x]
 // - [x] Refine DB Config for Vercel/Railway SSL [x]
 // - [x] Add `/api/v1/health/db` diagnostic endpoint [x]
-// - [ ] Final Push & Vercel Redeploy (User Action) [ ]
-// - [ ] Verify live login [ ]
+// - [x] Final Push & Vercel Redeploy (User Action) [x]
+// - [x] Verify live login [x]
 const pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false }
@@ -39,9 +39,23 @@ const runMigration = async () => {
         const sql = fs.readFileSync(sqlPath, 'utf8');
 
         console.log("📄 Reading local database.sql schema...");
-        // Execute the entire SQL script
         await pool.query(sql);
-        console.log("✅ Tables created.");
+        console.log("✅ Tables created or verified.");
+
+        // --- NEW: Patch for missing role column ---
+        console.log("🛠️ Patching database schema...");
+        await pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                               WHERE table_name='team_members' AND column_name='role') THEN
+                    ALTER TABLE team_members ADD COLUMN role VARCHAR(50) DEFAULT 'Member';
+                END IF;
+                -- Upgrade sort_order precision
+                ALTER TABLE tasks ALTER COLUMN sort_order TYPE DOUBLE PRECISION;
+            END $$;
+        `);
+        console.log("✅ Schema patch applied.");
 
         // --- NEW: Seed Admin User ---
         console.log("👤 Seeding Admin User...");

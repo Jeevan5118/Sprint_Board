@@ -53,26 +53,24 @@ const AdminImport = () => {
 
     const csvTemplates = {
         automate: [
-            { header: 'employee_name', desc: 'Full name of the member' },
-            { header: 'mail', desc: 'Login email (or "employee_email")' },
-            { header: 'password', desc: 'Initial login password' },
-            { header: 'team', desc: 'Team name to assign to' },
-            { header: 'project', desc: 'Project name (Optional)' },
-            { header: 'task_title', desc: 'Task to create (Optional)' },
-            { header: 'task_priority', desc: 'Urgent, High, Medium, Low' },
+            { header: 'Task Title', desc: 'Heading of the task' },
+            { header: 'Name', desc: 'Assignee name (Auto-creates account!)' },
+            { header: 'Team', desc: 'Team name (Connects user to team)' },
+            { header: 'Description', desc: 'Task details (Optional)' },
+            { header: 'Priority', desc: 'Urgent, High, Medium, Low' },
+            { header: 'Due Date', desc: 'DD-MM-YYYY supported!' },
         ],
         employees: [
-            { header: 'employee_name', desc: 'Full name' },
-            { header: 'mail', desc: 'Email address' },
-            { header: 'team', desc: 'Team name' },
-            { header: 'role', desc: 'Admin, Team Lead, or Member' },
-            { header: 'password', desc: 'Custom password (Optional)' },
+            { header: 'Employee Name', desc: 'Full name' },
+            { header: 'Mail', desc: 'Email address' },
+            { header: 'Team', desc: 'Team name' },
+            { header: 'Role', desc: 'Admin, Team Lead, or Member' },
         ],
         tasks: [
-            { header: 'title', desc: 'Task heading' },
-            { header: 'team', desc: 'Associated team' },
-            { header: 'mail', desc: 'Assignee email' },
-            { header: 'project', desc: 'Project name' },
+            { header: 'Task Title', desc: 'Task heading' },
+            { header: 'Team Name', desc: 'Associated team' },
+            { header: 'Assignee Email', desc: 'Email of owner' },
+            { header: 'Story Points', desc: 'Complexity score' },
         ]
     };
 

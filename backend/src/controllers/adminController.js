@@ -224,7 +224,14 @@ export const importData = async (req, res, next) => {
                             } else sprintId = sc.rows[0].id;
                         } else if (teamId) {
                             const activeS = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' LIMIT 1", [teamId]);
-                            if (activeS.rows.length > 0) sprintId = activeS.rows[0].id;
+                            if (activeS.rows.length > 0) {
+                                sprintId = activeS.rows[0].id;
+                            } else {
+                                // AUTO-FIX: Create and Activate a starting sprint so the user sees tasks on the board
+                                const ns = await client.query("INSERT INTO sprints (name, team_id, status) VALUES ($1, $2, 'Active') RETURNING id", ['Sprint 1', teamId]);
+                                sprintId = ns.rows[0].id;
+                                console.log(`Auto-created active sprint for team ${teamId}`);
+                            }
                         }
 
                         const finalTaskTitle = task_title || title;
@@ -242,9 +249,9 @@ export const importData = async (req, res, next) => {
                                 } else { finalDueDate = new Date(due_date); }
                             }
 
-                            const { rows } = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2', [teamId, sprintId ? 'To Do' : 'Backlog']);
+                            const { rows } = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2', [teamId, 'To Do']);
                             await client.query(`INSERT INTO tasks (title, description, priority, status, team_id, sprint_id, project_id, assignee_id, creator_id, sort_order, story_points, due_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-                                [finalTaskTitle, task_description || description || '', fp, sprintId ? 'To Do' : 'Backlog', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order, parseInt(story_points) || 0, (finalDueDate && !isNaN(finalDueDate.getTime())) ? finalDueDate : null]);
+                                [finalTaskTitle, task_description || description || '', fp, 'To Do', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order, parseInt(story_points) || 0, (finalDueDate && !isNaN(finalDueDate.getTime())) ? finalDueDate : null]);
                         }
                         summary.created++;
                     } else if (import_type === 'teams') {

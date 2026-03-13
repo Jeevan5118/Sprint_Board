@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTeams, createTeam, getTeamById, getTeamMembers, addTeamMember, removeTeamMember, promoteToLead, updateUserProfile, getAllUsers } from '../controllers/teamController.js';
+import { getTeams, createTeam, getTeamById, getTeamMembers, addTeamMember, removeTeamMember, promoteToLead, updateUserProfile, getAllUsers, deleteTeam } from '../controllers/teamController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import projectRoutes from './projectRoutes.js';
@@ -12,6 +12,7 @@ router.use(protect);
 
 router.get('/', getTeams);
 router.post('/', requireRole(['Admin', 'Team Lead']), createTeam);
+router.delete('/:teamId', requireRole(['Admin']), deleteTeam);
 
 // Team-scoped routes
 router.get('/:teamId', getTeamById);

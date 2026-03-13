@@ -14,7 +14,8 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400) FILTER (WHERE status = 'Done') as lead_time,
                 COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as weekly_throughput
             FROM tasks t
-            WHERE 1=1 ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
+            WHERE 1=1 
+            ${isAdmin ? '' : (req.user.role === 'Team Lead' ? 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)' : 'AND assignee_id = $1')}
         `;
         const statsRes = await db.query(statsQuery, isAdmin ? [] : [userId]);
         const s = statsRes.rows[0];
@@ -38,7 +39,8 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const teamsRes = await db.query(teamStatsQuery, isAdmin ? [] : [userId]);
 
         // 3. Alerts & Timeline
-        const teamScope = isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)';
+        const isMember = req.user.role === 'Member';
+        const teamScope = isAdmin ? '' : (isMember ? 'AND assignee_id = $1' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)');
         const teamParams = isAdmin ? [] : [userId];
 
         const overdueRes = await db.query(
@@ -54,10 +56,11 @@ export const getDashboardAnalytics = async (req, res, next) => {
              FROM comments c 
              JOIN users u ON c.user_id = u.id 
              JOIN tasks t ON c.task_id = t.id
-             WHERE 1=1 ${teamScope}
+             WHERE 1=1 ${isAdmin ? '' : (isMember ? 'AND (t.assignee_id = $1 OR c.user_id = $1)' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)')}
              ORDER BY c.created_at DESC LIMIT 8`,
             teamParams
         );
+        console.log(`Dashboard activity filtered for ${req.user.role} ${userId}`);
 
         res.json({
             analytics: {

@@ -27,6 +27,10 @@ export const getTasks = async (req, res, next) => {
         if (assignee_id) {
             query += ` AND t.assignee_id = $${count++}`;
             params.push(assignee_id);
+        } else if (req.user.role === 'Member') {
+            // Role Logic: Members ONLY see tasks assigned to them
+            query += ` AND t.assignee_id = $${count++}`;
+            params.push(req.user.id);
         }
 
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
@@ -46,9 +50,14 @@ export const getKanbanTasks = async (req, res, next) => {
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE t.team_id = $1 AND t.sprint_id IS NULL
-            ORDER BY t.sort_order ASC, t.created_at DESC
         `;
-        const { rows } = await db.query(query, [teamId]);
+        let params = [teamId];
+        if (req.user.role === 'Member') {
+            query += ' AND t.assignee_id = $2';
+            params.push(req.user.id);
+        }
+        query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
+        const { rows } = await db.query(query, params);
 
         const limitsQuery = 'SELECT status_name, wip_limit FROM kanban_column_limits WHERE team_id = $1';
         const limits = await db.query(limitsQuery, [teamId]);
@@ -200,10 +209,10 @@ export const updateTaskStatus = async (req, res, next) => {
             if (wipResult.rows.length > 0 && wipResult.rows[0].wip_limit > 0) {
                 const limit = wipResult.rows[0].wip_limit;
                 const countResult = await db.query(
-                    'SELECT COUNT(*) FROM tasks WHERE team_id = $1 AND sprint_id IS NULL AND status = $2 AND id != $3', 
+                    'SELECT COUNT(*) FROM tasks WHERE team_id = $1 AND sprint_id IS NULL AND status = $2 AND id != $3',
                     [teamId, status, id]
                 );
-                
+
                 if (parseInt(countResult.rows[0].count) >= limit) {
                     await db.query('ROLLBACK');
                     return res.status(400).json({ message: `WIP limit (${limit}) reached for ${status}` });
@@ -224,4 +233,14 @@ export const updateTaskStatus = async (req, res, next) => {
         console.error("Task Status Update Error:", error);
         next(error);
     }
+};
+
+export const deleteTask = async (req, res, next) => {
+    try {
+        const { id, teamId } = req.params;
+        // Role check (Admin or Team Lead only) is done in routes
+        const { rows } = await db.query('DELETE FROM tasks WHERE id = $1 AND team_id = $2 RETURNING *', [id, teamId]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
+        res.json({ message: 'Task deleted successfully', task: rows[0] });
+    } catch (error) { next(error); }
 };
