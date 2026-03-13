@@ -74,12 +74,14 @@ export const submitReport = async (req, res, next) => {
         const rootFolderId = process.env.ZOHO_WORKDRIVE_REPORTS_FOLDER_ID;
         const userName = req.user.name || 'Unknown Member';
 
+        const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
+
         console.log(`[SubmitReport] Config Check: apiKey exists? ${!!apiKey}, rootFolderId: "${rootFolderId}"`);
 
-        if (!apiKey || !rootFolderId || rootFolderId.includes('your_reports_folder_id_here')) {
+        if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
             return res.status(500).json({
-                message: 'Zoho Reports storage is not configured',
-                debug: { hasApiKey: !!apiKey, folderId: rootFolderId }
+                message: 'Zoho Reports storage is not configured properly',
+                debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
             });
         }
 
