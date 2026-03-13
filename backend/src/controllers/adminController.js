@@ -159,7 +159,7 @@ export const importData = async (req, res, next) => {
                         summary.created++;
 
                     } else if (import_type === 'automate') {
-                        const { team, team_name, employee_name, name, mail, email, employee_email, password, role, employee_role, job_role, user_role, member_role, project, sprint, task_title, task_description, task_priority } = row;
+                        const { team, team_name, employee_name, name, mail, email, employee_email, password, role, employee_role, job_role, user_role, member_role, project, project_name, sprint, sprint_name, task_title, title, task_description, description, task_priority, priority, story_points, due_date } = row;
                         const finalEmail = mail || email || employee_email;
                         const finalName = employee_name || name;
                         const finalRole = validateRole(role || employee_role || job_role || user_role || member_role);
@@ -221,11 +221,24 @@ export const importData = async (req, res, next) => {
                             if (activeS.rows.length > 0) sprintId = activeS.rows[0].id;
                         }
 
-                        if (task_title && teamId) {
+                        const finalTaskTitle = task_title || title;
+                        if (finalTaskTitle && teamId) {
                             const pm = { 'low': 'Low', 'medium': 'Medium', 'high': 'High', 'urgent': 'Urgent' };
-                            const fp = pm[(task_priority || 'medium').toLowerCase()] || 'Medium';
+                            const fp = pm[(task_priority || priority || 'medium').toLowerCase()] || 'Medium';
+
+                            let finalDueDate = null;
+                            if (due_date) {
+                                if (typeof due_date === 'string' && due_date.includes('-')) {
+                                    const parts = due_date.split('-');
+                                    if (parts[0].length <= 2 && parts[2].length === 4) {
+                                        finalDueDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                                    } else { finalDueDate = new Date(due_date); }
+                                } else { finalDueDate = new Date(due_date); }
+                            }
+
                             const { rows } = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2', [teamId, sprintId ? 'To Do' : 'Backlog']);
-                            await client.query(`INSERT INTO tasks (title, description, priority, status, team_id, sprint_id, project_id, assignee_id, creator_id, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`, [task_title, task_description, fp, sprintId ? 'To Do' : 'Backlog', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order]);
+                            await client.query(`INSERT INTO tasks (title, description, priority, status, team_id, sprint_id, project_id, assignee_id, creator_id, sort_order, story_points, due_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                                [finalTaskTitle, task_description || description || '', fp, sprintId ? 'To Do' : 'Backlog', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order, parseInt(story_points) || 0, (finalDueDate && !isNaN(finalDueDate.getTime())) ? finalDueDate : null]);
                         }
                         summary.created++;
                     } else if (import_type === 'teams') {
