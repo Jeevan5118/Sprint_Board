@@ -21,7 +21,6 @@ const getOrCreateUserFolder = async (parentFolderId, userName, authHeader) => {
             return { id: existingFolder.id, isSubfolder: true };
         }
 
-        const baseUrl = getWorkDriveBaseUrl();
         const createUrl = `${baseUrl}/files`;
         const createResponse = await axios.post(createUrl, {
             data: {
