@@ -46,7 +46,6 @@ const Projects = () => {
         try {
             const { data } = await api.post(`/teams/${form.team_id}/projects`, {
                 name: form.name,
-                name: form.name,
                 description: form.description
             });
             // Re-fetch to get enriched data
