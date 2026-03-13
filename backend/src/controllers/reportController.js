@@ -121,8 +121,13 @@ export const uploadWork = async (req, res, next) => {
         const rootFolderId = process.env.ZOHO_WORKDRIVE_WORK_FOLDER_ID;
         const userName = req.user.name || 'Unknown Member';
 
-        if (!apiKey || !rootFolderId) {
-            return res.status(500).json({ message: 'Zoho Work storage is not configured' });
+        const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
+
+        if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
+            return res.status(500).json({
+                message: 'Zoho Work storage is not configured properly',
+                debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
+            });
         }
 
         const authHeader = { 'Authorization': `Zoho-oauthtoken ${apiKey}` };

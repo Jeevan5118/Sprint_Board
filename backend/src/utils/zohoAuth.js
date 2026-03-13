@@ -30,10 +30,11 @@ export const getZohoAccessToken = async () => {
     const clientSecret = process.env.ZOHO_CLIENT_SECRET;
     const refreshToken = process.env.ZOHO_REFRESH_TOKEN;
 
-    // Fallback to static API key if refresh credentials are missing 
-    // (helps with transition or if the user prefers manual updates)
-    if (!clientId || !clientSecret || !refreshToken) {
-        console.warn('⚠️ Zoho OAuth credentials missing. Falling back to static ZOHO_WORKDRIVE_API_KEY.');
+    const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
+
+    // Fallback if refresh credentials are missing or are placeholders
+    if (isPlaceholder(clientId) || isPlaceholder(clientSecret) || isPlaceholder(refreshToken)) {
+        console.warn('⚠️ Zoho OAuth credentials incomplete or placeholders. Using static ZOHO_WORKDRIVE_API_KEY.');
         return process.env.ZOHO_WORKDRIVE_API_KEY;
     }
 
