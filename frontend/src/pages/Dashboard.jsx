@@ -106,7 +106,9 @@ const Dashboard = () => {
             await api.post('/reports/submit', formData);
             toast.success("Today's report submitted successfully!", { id: loadingToast });
         } catch (err) {
-            toast.error(err.response?.data?.message || "Failed to submit report to Zoho", { id: loadingToast });
+            const errorDetail = err.response?.data?.error;
+            const message = typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : (errorDetail || err.response?.data?.message || "Internal Server Error");
+            toast.error(`Zoho Error: ${message}`, { id: loadingToast, duration: 6000 });
         } finally {
             setIsSubmittingReport(false);
             // Reset input
@@ -127,7 +129,9 @@ const Dashboard = () => {
             await api.post('/reports/work', formData);
             toast.success("Work uploaded successfully!", { id: loadingToast });
         } catch (err) {
-            toast.error(err.response?.data?.message || "Failed to upload work to Zoho", { id: loadingToast });
+            const errorDetail = err.response?.data?.error;
+            const message = typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : (errorDetail || err.response?.data?.message || "Internal Server Error");
+            toast.error(`Zoho Error: ${message}`, { id: loadingToast, duration: 6000 });
         } finally {
             setIsUploadingWork(false);
             // Reset input

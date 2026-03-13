@@ -104,10 +104,11 @@ export const submitReport = async (req, res, next) => {
             zohoResponse: response.data
         });
     } catch (error) {
-        console.error('Zoho Report Error:', error.response?.data || error.message);
+        const errorData = error.response?.data || error.message;
+        console.error('Zoho Report Error:', errorData);
         res.status(error.response?.status || 500).json({
             message: 'Failed to upload report to Zoho',
-            error: error.response?.data || error.message
+            error: errorData
         });
     }
 };
@@ -154,10 +155,11 @@ export const uploadWork = async (req, res, next) => {
             zohoResponse: response.data
         });
     } catch (error) {
-        console.error('Zoho Work Upload Error:', error.response?.data || error.message);
+        const errorData = error.response?.data || error.message;
+        console.error('Zoho Work Upload Error:', errorData);
         res.status(error.response?.status || 500).json({
             message: 'Failed to upload work to Zoho',
-            error: error.response?.data || error.message
+            error: errorData
         });
     }
 };
