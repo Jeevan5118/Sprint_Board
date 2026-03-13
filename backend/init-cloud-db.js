@@ -15,6 +15,11 @@ if (!connectionString || connectionString.trim() === '' || connectionString.incl
     process.exit(1);
 }
 
+// - [x] Implement case-insensitive login [x]
+// - [x] Refine DB Config for Vercel/Railway SSL [x]
+// - [x] Add `/api/v1/health/db` diagnostic endpoint [x]
+// - [ ] Final Push & Vercel Redeploy (User Action) [ ]
+// - [ ] Verify live login [ ]
 const pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false }
