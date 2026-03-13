@@ -63,7 +63,13 @@ const handleZohoUpload = async (file, targetFolderId, apiKey, customName = null)
 
 export const submitReport = async (req, res, next) => {
     try {
-        if (!req.file) return res.status(400).json({ message: 'No report file provided' });
+        console.log(`[SubmitReport] Headers:`, JSON.stringify(req.headers));
+        console.log(`[SubmitReport] File:`, req.file ? 'Received' : 'MISSING');
+        
+        if (!req.file) return res.status(400).json({ 
+            message: 'No report file provided',
+            debug: { headers: req.headers['content-type'] }
+        });
 
         const apiKey = await getZohoAccessToken();
         const rootFolderId = process.env.ZOHO_WORKDRIVE_REPORTS_FOLDER_ID;
@@ -99,7 +105,13 @@ export const submitReport = async (req, res, next) => {
 
 export const uploadWork = async (req, res, next) => {
     try {
-        if (!req.file) return res.status(400).json({ message: 'No work file provided' });
+        console.log(`[UploadWork] Headers:`, JSON.stringify(req.headers));
+        console.log(`[UploadWork] File:`, req.file ? 'Received' : 'MISSING');
+
+        if (!req.file) return res.status(400).json({ 
+            message: 'No work file provided',
+            debug: { headers: req.headers['content-type'] }
+        });
 
         const apiKey = await getZohoAccessToken();
         const rootFolderId = process.env.ZOHO_WORKDRIVE_WORK_FOLDER_ID;
