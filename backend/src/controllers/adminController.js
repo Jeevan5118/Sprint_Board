@@ -4,7 +4,8 @@ import bcrypt from 'bcryptjs';
 import db from '../config/db.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+// pdf-parse is lazy-loaded inside importData to prevent Vercel startup crash
+let pdf = null;
 
 const validateRole = (role) => {
     const validRoles = ['Admin', 'Team Lead', 'Member'];
@@ -62,6 +63,17 @@ export const importData = async (req, res, next) => {
             const worksheet = workbook.Sheets[sheetName];
             records = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
         } else if (fileExt === 'pdf') {
+            if (!pdf) {
+                try {
+                    pdf = require('pdf-parse');
+                } catch (err) {
+                    console.error('PDF Parse Load Error:', err.message);
+                    return res.status(500).json({
+                        message: 'PDF processing is currently unavailable in this environment.',
+                        error: err.message
+                    });
+                }
+            }
             const data = await pdf(buffer);
             const lines = data.text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
