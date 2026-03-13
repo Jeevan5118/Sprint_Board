@@ -79,8 +79,11 @@ export const submitReport = async (req, res, next) => {
         console.log(`[SubmitReport] Config Check: apiKey exists? ${!!apiKey}, rootFolderId: "${rootFolderId}"`);
 
         if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
+            const missing = [];
+            if (isPlaceholder(apiKey)) missing.push('ZOHO_WORKDRIVE_API_KEY');
+            if (isPlaceholder(rootFolderId)) missing.push('ZOHO_WORKDRIVE_REPORTS_FOLDER_ID');
             return res.status(500).json({
-                message: 'Zoho Reports storage is not configured properly',
+                message: `Zoho Reports config missing: ${missing.join(', ')}`,
                 debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
             });
         }
