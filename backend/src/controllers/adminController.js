@@ -252,23 +252,33 @@ export const importData = async (req, res, next) => {
                         summary.created++;
 
                     } else { // Tasks (Default)
-                        const { title, description, team, priority, story_points, due_date } = row;
-                        const finalEmail = row.mail || row.assignee_email;
-                        if (!title || !finalEmail || !team) throw new Error('Missing title, email, or team');
+                        const { title, task_title, description, team, team_name, priority, story_points, due_date } = row;
+                        const finalEmail = row.mail || row.assignee_email || row.email || row.user_email || row.member_email || row.login || row.member_mail;
+                        const finalTeam = team || team_name;
+                        const finalName = row.name || row.assignee_name || row.member_name || row.full_name || row.user_name || 'New Member';
 
-                        const teamCheck = await client.query('SELECT id FROM teams WHERE name = $1', [team]);
-                        if (teamCheck.rows.length === 0) throw new Error(`Team ${team} not found`);
+                        if (!(title || task_title) || !finalTeam) throw new Error('Missing title or team');
+
+                        // Handle missing email by generating one from name
+                        let workingEmail = finalEmail;
+                        if (!workingEmail && finalName) {
+                            workingEmail = `${finalName.toLowerCase().replace(/\s+/g, '.')}@sprintboard.com`;
+                        }
+                        if (!workingEmail) throw new Error('Missing email or name to identify user');
+
+                        const teamCheck = await client.query('SELECT id FROM teams WHERE name = $1', [finalTeam]);
+                        if (teamCheck.rows.length === 0) throw new Error(`Team ${finalTeam} not found`);
                         const teamId = teamCheck.rows[0].id;
 
                         let assigneeId;
-                        const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [finalEmail]);
+                        const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [workingEmail]);
                         if (userCheck.rows.length === 0) {
                             // Automatically create missing user
                             const salt = await bcrypt.genSalt(10);
                             const hash = await bcrypt.hash(defaultPassword, salt);
                             const newUser = await client.query(
                                 'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
-                                [row.assignee_name || row.name || 'New Member', finalEmail, hash, 'Member']
+                                [finalName, workingEmail, hash, 'Member']
                             );
                             assigneeId = newUser.rows[0].id;
                         } else {
@@ -293,10 +303,25 @@ export const importData = async (req, res, next) => {
                             [teamId, targetSprintId ? 'To Do' : 'Backlog']
                         );
 
+                        let finalDueDate = null;
+                        if (due_date) {
+                            if (typeof due_date === 'string' && due_date.includes('-')) {
+                                const parts = due_date.split('-');
+                                // Handle DD-MM-YYYY
+                                if (parts[0].length <= 2 && parts[2].length === 4) {
+                                    finalDueDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                                } else {
+                                    finalDueDate = new Date(due_date);
+                                }
+                            } else {
+                                finalDueDate = new Date(due_date);
+                            }
+                        }
+
                         await client.query(`
                         INSERT INTO tasks (title, description, priority, status, story_points, due_date, team_id, sprint_id, assignee_id, creator_id, sort_order)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                    `, [title, description, finalPriority, targetSprintId ? 'To Do' : 'Backlog', parseInt(story_points) || 0, due_date ? new Date(due_date) : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order]);
+                    `, [title || row.task_title || 'Imported Task', description, finalPriority, targetSprintId ? 'To Do' : 'Backlog', parseInt(story_points) || 0, finalDueDate && !isNaN(finalDueDate.getTime()) ? finalDueDate : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order]);
 
                         summary.created++;
                     }
