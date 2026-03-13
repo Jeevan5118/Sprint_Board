@@ -161,7 +161,13 @@ export const importData = async (req, res, next) => {
                     } else if (import_type === 'automate') {
                         const { team, team_name, employee_name, name, mail, email, employee_email, password, role, employee_role, job_role, user_role, member_role, project, project_name, sprint, sprint_name, task_title, title, task_description, description, task_priority, priority, story_points, due_date } = row;
                         const finalEmail = mail || email || employee_email;
-                        const finalName = employee_name || name;
+                        const finalName = employee_name || name || 'New Member';
+
+                        // Handle missing email by generating one from name
+                        let workingEmail = finalEmail;
+                        if (!workingEmail && finalName && finalName !== 'New Member') {
+                            workingEmail = `${finalName.toLowerCase().replace(/\s+/g, '.')}@sprintboard.com`;
+                        }
                         const finalRole = validateRole(role || employee_role || job_role || user_role || member_role);
                         const rawPassword = password || defaultPassword;
                         const finalTeam = team || team_name;
@@ -187,12 +193,12 @@ export const importData = async (req, res, next) => {
                         }
 
                         let userId = req.user.id;
-                        if (finalEmail && teamId) {
-                            const uc = await client.query('SELECT id FROM users WHERE email = $1', [finalEmail]);
+                        if (workingEmail && teamId) {
+                            const uc = await client.query('SELECT id FROM users WHERE email = $1', [workingEmail]);
                             if (uc.rows.length === 0) {
                                 const salt = await bcrypt.genSalt(10);
                                 const h = await bcrypt.hash(rawPassword, salt);
-                                const nu = await client.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id', [finalName || 'New Member', finalEmail, h, finalRole]);
+                                const nu = await client.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id', [finalName, workingEmail, h, finalRole]);
                                 userId = nu.rows[0].id;
                             } else userId = uc.rows[0].id;
 
