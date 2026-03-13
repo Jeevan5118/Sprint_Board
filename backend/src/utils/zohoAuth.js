@@ -5,6 +5,17 @@ dotenv.config();
 let cachedToken = null;
 let tokenExpiry = null;
 
+const getZohoBaseUrl = () => {
+    const region = (process.env.ZOHO_REGION || 'com').toLowerCase();
+    // Common regions: com, in, eu, au, jp
+    return `https://accounts.zoho.${region}`;
+};
+
+export const getWorkDriveBaseUrl = () => {
+    const region = (process.env.ZOHO_REGION || 'com').toLowerCase();
+    return `https://workdrive.zoho.${region}/api/v1`;
+};
+
 /**
  * Automatically retrieves or refreshes the Zoho Access Token using the Refresh Token.
  * Implements caching to avoid redundant API calls.
@@ -27,8 +38,9 @@ export const getZohoAccessToken = async () => {
     }
 
     try {
-        console.log('🔄 Refreshing Zoho Access Token...');
-        const response = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
+        const baseUrl = getZohoBaseUrl();
+        console.log(`🔄 Refreshing Zoho Access Token (${baseUrl})...`);
+        const response = await axios.post(`${baseUrl}/oauth/v2/token`, null, {
             params: {
                 refresh_token: refreshToken,
                 client_id: clientId,

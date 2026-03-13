@@ -1,7 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import dotenv from 'dotenv';
-import { getZohoAccessToken } from '../utils/zohoAuth.js';
+import { getZohoAccessToken, getWorkDriveBaseUrl } from '../utils/zohoAuth.js';
 dotenv.config();
 
 /**
@@ -9,7 +9,8 @@ dotenv.config();
  */
 const getOrCreateUserFolder = async (parentFolderId, userName, authHeader) => {
     try {
-        const listUrl = `https://workdrive.zoho.com/api/v1/files/${parentFolderId}/files`;
+        const baseUrl = getWorkDriveBaseUrl();
+        const listUrl = `${baseUrl}/files/${parentFolderId}/files`;
         const listResponse = await axios.get(listUrl, { headers: authHeader });
 
         const existingFolder = listResponse.data.data?.find(file =>
@@ -20,7 +21,8 @@ const getOrCreateUserFolder = async (parentFolderId, userName, authHeader) => {
             return { id: existingFolder.id, isSubfolder: true };
         }
 
-        const createUrl = `https://workdrive.zoho.com/api/v1/files`;
+        const baseUrl = getWorkDriveBaseUrl();
+        const createUrl = `${baseUrl}/files`;
         const createResponse = await axios.post(createUrl, {
             data: {
                 attributes: {
@@ -48,7 +50,8 @@ const handleZohoUpload = async (file, targetFolderId, apiKey, customName = null)
         contentType: file.mimetype,
     });
 
-    const uploadUrl = `https://workdrive.zoho.com/api/v1/upload?parent_id=${targetFolderId}&override-name-exist=true`;
+    const baseUrl = getWorkDriveBaseUrl();
+    const uploadUrl = `${baseUrl}/upload?parent_id=${targetFolderId}&override-name-exist=true`;
 
     return axios.post(uploadUrl, formData, {
         headers: {

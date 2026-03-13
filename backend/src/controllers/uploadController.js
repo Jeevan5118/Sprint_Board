@@ -2,7 +2,7 @@ import axios from 'axios';
 import FormData from 'form-data';
 import db from '../config/db.js';
 import dotenv from 'dotenv';
-import { getZohoAccessToken } from '../utils/zohoAuth.js';
+import { getZohoAccessToken, getWorkDriveBaseUrl } from '../utils/zohoAuth.js';
 dotenv.config();
 
 export const toggleAttachment = async (req, res, next) => {
@@ -33,7 +33,8 @@ export const toggleAttachment = async (req, res, next) => {
         });
 
         // Parameters for Zoho - using the same name logic from Cloudinary for consistency
-        const uploadUrl = `https://workdrive.zoho.com/api/v1/upload?parent_id=${folderId}&override-name-exist=true`;
+        const baseUrl = getWorkDriveBaseUrl();
+        const uploadUrl = `${baseUrl}/upload?parent_id=${folderId}&override-name-exist=true`;
 
         console.log(`Relaying Task Attachment to Zoho: ${req.file.originalname}`);
 
@@ -47,7 +48,10 @@ export const toggleAttachment = async (req, res, next) => {
         // Zoho WorkDrive v1 API typically returns a list of uploaded files
         // Extracting data from Zoho response
         const zohoData = response.data.data?.[0]?.attributes || {};
-        const fileUrl = zohoData.permalink || response.data.permalink || `https://workdrive.zoho.com/api/v1/stream/${zohoData.resource_id}`;
+        const baseUrl = getWorkDriveBaseUrl();
+        // Construct regional stream URL
+        const streamBase = baseUrl.replace('/api/v1', '/api/v1/stream');
+        const fileUrl = zohoData.permalink || response.data.permalink || `${streamBase}/${zohoData.resource_id}`;
 
         const newAttachment = await db.query(
             'INSERT INTO task_attachments (task_id, uploaded_by, file_name, file_url, public_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
