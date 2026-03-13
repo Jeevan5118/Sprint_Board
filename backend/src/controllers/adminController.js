@@ -149,12 +149,12 @@ export const importData = async (req, res, next) => {
                         // 3. Mapping Logic
                         const memCheck = await client.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
                         if (memCheck.rows.length === 0) {
-                            await client.query('INSERT INTO team_members (team_id, user_id) VALUES ($1, $2)', [teamId, userId]);
+                            await client.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)', [teamId, userId, finalRole]);
                         }
 
                         // 4. Ensure Importer is in Team for visibility
                         if (req.user.id !== userId) {
-                            await client.query('INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [teamId, req.user.id]);
+                            await client.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [teamId, req.user.id, 'Admin']);
                         }
                         summary.created++;
 
@@ -235,7 +235,7 @@ export const importData = async (req, res, next) => {
                         if (exists.rows.length === 0) {
                             const newT = await client.query('INSERT INTO teams (name, description, created_by) VALUES ($1, $2, $3) RETURNING id', [name, description, req.user.id]);
                             // Ensure visibility
-                            await client.query('INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [newT.rows[0].id, req.user.id]);
+                            await client.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [newT.rows[0].id, req.user.id, 'Admin']);
                             summary.created++;
                         } else { summary.skipped++; }
 
@@ -260,13 +260,26 @@ export const importData = async (req, res, next) => {
                         if (teamCheck.rows.length === 0) throw new Error(`Team ${team} not found`);
                         const teamId = teamCheck.rows[0].id;
 
+                        let assigneeId;
                         const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [finalEmail]);
-                        if (userCheck.rows.length === 0) throw new Error(`User ${finalEmail} not found`);
-                        const assigneeId = userCheck.rows[0].id;
+                        if (userCheck.rows.length === 0) {
+                            // Automatically create missing user
+                            const salt = await bcrypt.genSalt(10);
+                            const hash = await bcrypt.hash(defaultPassword, salt);
+                            const newUser = await client.query(
+                                'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
+                                [row.assignee_name || row.name || 'New Member', finalEmail, hash, 'Member']
+                            );
+                            assigneeId = newUser.rows[0].id;
+                        } else {
+                            assigneeId = userCheck.rows[0].id;
+                        }
 
-                        // Validate User belongs to team (Enterprise constraint)
+                        // Validate User belongs to team (Enterprise constraint) - Auto-map if missing
                         const memberCheck = await client.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, assigneeId]);
-                        if (memberCheck.rows.length === 0) throw new Error(`User ${finalEmail} is not in team ${team}`);
+                        if (memberCheck.rows.length === 0) {
+                            await client.query('INSERT INTO team_members (team_id, user_id, role) VALUES ($1, $2, $3)', [teamId, assigneeId, 'Member']);
+                        }
 
                         let targetSprintId = null;
                         const activeSprintCheck = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active'", [teamId]);
