@@ -64,8 +64,8 @@ export const submitReport = async (req, res, next) => {
     try {
         console.log(`[SubmitReport] Headers:`, JSON.stringify(req.headers));
         console.log(`[SubmitReport] File:`, req.file ? 'Received' : 'MISSING');
-        
-        if (!req.file) return res.status(400).json({ 
+
+        if (!req.file) return res.status(400).json({
             message: 'No report file provided',
             debug: { headers: req.headers['content-type'] }
         });
@@ -74,8 +74,13 @@ export const submitReport = async (req, res, next) => {
         const rootFolderId = process.env.ZOHO_WORKDRIVE_REPORTS_FOLDER_ID;
         const userName = req.user.name || 'Unknown Member';
 
-        if (!apiKey || !rootFolderId) {
-            return res.status(500).json({ message: 'Zoho Reports storage is not configured' });
+        console.log(`[SubmitReport] Config Check: apiKey exists? ${!!apiKey}, rootFolderId: "${rootFolderId}"`);
+
+        if (!apiKey || !rootFolderId || rootFolderId.includes('your_reports_folder_id_here')) {
+            return res.status(500).json({
+                message: 'Zoho Reports storage is not configured',
+                debug: { hasApiKey: !!apiKey, folderId: rootFolderId }
+            });
         }
 
         const authHeader = { 'Authorization': `Zoho-oauthtoken ${apiKey}` };
@@ -107,7 +112,7 @@ export const uploadWork = async (req, res, next) => {
         console.log(`[UploadWork] Headers:`, JSON.stringify(req.headers));
         console.log(`[UploadWork] File:`, req.file ? 'Received' : 'MISSING');
 
-        if (!req.file) return res.status(400).json({ 
+        if (!req.file) return res.status(400).json({
             message: 'No work file provided',
             debug: { headers: req.headers['content-type'] }
         });
