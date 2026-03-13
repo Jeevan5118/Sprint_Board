@@ -11,6 +11,7 @@ import userRoutes from './userRoutes.js';
 import reportRoutes from './reportRoutes.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { getAllProjects } from '../controllers/projectController.js';
+import db from '../config/db.js';
 
 const router = Router();
 
