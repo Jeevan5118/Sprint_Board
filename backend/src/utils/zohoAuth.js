@@ -5,15 +5,18 @@ dotenv.config();
 let cachedToken = null;
 let tokenExpiry = null;
 
+const getRegion = () => {
+    let region = (process.env.ZOHO_REGION || 'com').toLowerCase().trim();
+    if (region.startsWith('.')) region = region.substring(1);
+    return region;
+};
+
 const getZohoBaseUrl = () => {
-    const region = (process.env.ZOHO_REGION || 'com').toLowerCase();
-    // Common regions: com, in, eu, au, jp
-    return `https://accounts.zoho.${region}`;
+    return `https://accounts.zoho.${getRegion()}`;
 };
 
 export const getWorkDriveBaseUrl = () => {
-    const region = (process.env.ZOHO_REGION || 'com').toLowerCase();
-    return `https://workdrive.zoho.${region}/api/v1`;
+    return `https://workdrive.zoho.${getRegion()}/api/v1`;
 };
 
 /**
