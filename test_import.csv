@@ -1,0 +1,3 @@
+employee_name,mail,password,team,project,sprint,task_title,task_description,task_priority
+Test User,test.user@test.com,Password@123,Validation Team,Validation Project,Sprint 1,Verify Import,This task was created by an automated test import.,High
+Test User,test.user@test.com,Password@123,Validation Team,Validation Project,Sprint 1,Verify Drag and Drop,This task will be used to test drag and drop accuracy.,Medium

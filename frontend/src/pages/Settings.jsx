@@ -1,0 +1,245 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { User, Lock, Bell, Users } from 'lucide-react';
+import api from '../api/axios';
+import { toast } from 'react-hot-toast';
+
+const Settings = () => {
+    const { user, updateUser } = useAuth();
+    const [activeTab, setActiveTab] = useState('profile');
+
+    // Profile State
+    const [name, setName] = useState(user?.name || '');
+    const [email, setEmail] = useState(user?.email || '');
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    // Password State
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+    // Admin Creation State
+    const [newUserName, setNewUserName] = useState('');
+    const [newUserEmail, setNewUserEmail] = useState('');
+    const [newUserPassword, setNewUserPassword] = useState('');
+    const [newUserRole, setNewUserRole] = useState('Member');
+    const [newUserTeamId, setNewUserTeamId] = useState('');
+    const [teams, setTeams] = useState([]);
+    const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        setIsSavingProfile(true);
+        try {
+            await api.put('/users/me', { name, email });
+            updateUser({ name, email });
+            toast.success('Profile updated successfully.');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update profile');
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
+
+    const handlePasswordSubmit = async (e) => {
+        e.preventDefault();
+        setIsSavingPassword(true);
+        try {
+            await api.put('/auth/change-password', { currentPassword, newPassword });
+            toast.success('Password updated successfully.');
+            setCurrentPassword('');
+            setNewPassword('');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update password');
+        } finally {
+            setIsSavingPassword(false);
+        }
+    };
+
+    // Fetch teams when Admin tab is opened
+    const handleAdminTabClick = async () => {
+        setActiveTab('admin_users');
+        if (teams.length === 0) {
+            try { const res = await api.get('/teams'); setTeams(res.data); } catch { }
+        }
+    };
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        setIsCreatingUser(true);
+        try {
+            const res = await api.post('/admin/users', {
+                name: newUserName, email: newUserEmail,
+                password: newUserPassword, role: newUserRole
+            });
+            // If a team was selected, add this new user to that team
+            if (newUserTeamId && res.data?.id) {
+                await api.post(`/teams/${newUserTeamId}/members`, { user_id: res.data.id });
+            }
+            toast.success(`Account created for ${newUserName}!`);
+            setNewUserName(''); setNewUserEmail(''); setNewUserPassword('');
+            setNewUserRole('Member'); setNewUserTeamId('');
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to create user account');
+        } finally {
+            setIsCreatingUser(false);
+        }
+    };
+
+    return (
+        <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900">Account Settings</h1>
+                <p className="text-sm text-slate-500 mt-1">Manage your personal profile and security preferences.</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
+                {/* Sidebar Tabs */}
+                <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 space-y-2">
+                    <button
+                        onClick={() => setActiveTab('profile')}
+                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                    >
+                        <User className="w-4 h-4 mr-3" /> Profile Details
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('password')}
+                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'password' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                    >
+                        <Lock className="w-4 h-4 mr-3" /> Security & Password
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('notifications')}
+                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'notifications' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                    >
+                        <Bell className="w-4 h-4 mr-3" /> Notifications
+                    </button>
+                    {user?.role === 'Admin' && (
+                        <button
+                            onClick={handleAdminTabClick}
+                            className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'admin_users' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                        >
+                            <Users className="w-4 h-4 mr-3" /> User Management
+                        </button>
+                    )}
+                </div>
+
+                {/* Content Area */}
+                <div className="flex-1 p-6 md:p-8">
+                    {activeTab === 'profile' && (
+                        <div className="max-w-xl animate-in fade-in">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-6 border-b border-slate-100 pb-2">Profile Information</h2>
+                            <form onSubmit={handleProfileSubmit} className="space-y-5">
+                                <div>
+                                    <label className="label-field">Full Name</label>
+                                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="input-field bg-slate-50" />
+                                </div>
+                                <div>
+                                    <label className="label-field">Email Address</label>
+                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="input-field bg-slate-50" />
+                                </div>
+                                <div className="pt-4 flex justify-end">
+                                    <button type="submit" disabled={isSavingProfile} className="btn-primary">
+                                        {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {activeTab === 'password' && (
+                        <div className="max-w-xl animate-in fade-in">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-6 border-b border-slate-100 pb-2">Change Password</h2>
+                            <form onSubmit={handlePasswordSubmit} className="space-y-5">
+                                <div>
+                                    <label className="label-field">Current Password</label>
+                                    <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="input-field" />
+                                </div>
+                                <div>
+                                    <label className="label-field">New Password</label>
+                                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="input-field" minLength={8} />
+                                    <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters long.</p>
+                                </div>
+                                <div className="pt-4 flex justify-end">
+                                    <button type="submit" disabled={isSavingPassword} className="btn-primary">
+                                        {isSavingPassword ? 'Updating...' : 'Update Password'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    {activeTab === 'notifications' && (
+                        <div className="max-w-xl animate-in fade-in">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-6 border-b border-slate-100 pb-2">Email Notifications</h2>
+                            <div className="space-y-4">
+                                <label className="flex items-center">
+                                    <input type="checkbox" defaultChecked className="rounded text-primary-blue focus:ring-primary-blue h-4 w-4" />
+                                    <span className="ml-3 text-sm text-slate-700">Receive email when assigned to a task</span>
+                                </label>
+                                <label className="flex items-center">
+                                    <input type="checkbox" defaultChecked className="rounded text-primary-blue focus:ring-primary-blue h-4 w-4" />
+                                    <span className="ml-3 text-sm text-slate-700">Receive email when someone comments on your task</span>
+                                </label>
+                                <label className="flex items-center">
+                                    <input type="checkbox" className="rounded text-primary-blue focus:ring-primary-blue h-4 w-4" />
+                                    <span className="ml-3 text-sm text-slate-700">Receive weekly digest of Sprint progress</span>
+                                </label>
+                            </div>
+                            <div className="pt-8 flex justify-end">
+                                <button className="btn-primary">Save Preferences</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'admin_users' && user?.role === 'Admin' && (
+                        <div className="max-w-xl animate-in fade-in">
+                            <h2 className="text-lg font-semibold text-indigo-900 mb-6 border-b border-slate-100 pb-2 flex items-center">
+                                <Users className="w-5 h-5 mr-2 text-indigo-600" />
+                                Create New Account
+                            </h2>
+                            <form onSubmit={handleCreateUser} className="space-y-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="label-field">Full Name</label>
+                                        <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} required className="input-field" placeholder="John Doe" />
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Role</label>
+                                        <select value={newUserRole} onChange={e => setNewUserRole(e.target.value)} required className="input-field">
+                                            <option value="Member">Member</option>
+                                            <option value="Team Lead">Team Lead</option>
+                                            <option value="Admin">Admin</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="label-field">Email Address</label>
+                                    <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required className="input-field" placeholder="user@sprintboard.com" />
+                                </div>
+                                <div>
+                                    <label className="label-field">Temporary Password</label>
+                                    <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required minLength={8} className="input-field" placeholder="••••••••" />
+                                </div>
+                                <div>
+                                    <label className="label-field">Assign to Team (Optional)</label>
+                                    <select value={newUserTeamId} onChange={e => setNewUserTeamId(e.target.value)} className="input-field">
+                                        <option value="">No team assignment</option>
+                                        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                </div>
+                                <div className="pt-4 flex justify-end">
+                                    <button type="submit" disabled={isCreatingUser} className="inline-flex justify-center items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                                        {isCreatingUser ? 'Creating...' : 'Create Valid Account'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Settings;

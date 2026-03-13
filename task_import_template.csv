@@ -1,0 +1,4 @@
+Task Title,Assignee Email,Team Name,Description,Priority,Story Points,Due Date
+"Implement Login Logic",admin@sprintboard.com,"Engineers","Setup JWT and bcrypt in backend","High",5,2026-04-01
+"Design Dashboard UI",admin@sprintboard.com,"Designers","Create a premium dark mode dashboard","Urgent",8,2026-03-25
+"Setup Database Schema",member@test.com,"Engineers","Migrate tables to PostgreSQL","Medium",3,2026-03-20
