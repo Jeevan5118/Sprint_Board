@@ -129,8 +129,11 @@ export const uploadWork = async (req, res, next) => {
         const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
 
         if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
+            const missing = [];
+            if (isPlaceholder(apiKey)) missing.push('ZOHO_WORKDRIVE_API_KEY');
+            if (isPlaceholder(rootFolderId)) missing.push('ZOHO_WORKDRIVE_WORK_FOLDER_ID');
             return res.status(500).json({
-                message: 'Zoho Work storage is not configured properly',
+                message: `Zoho Work config missing: ${missing.join(', ')}`,
                 debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
             });
         }
