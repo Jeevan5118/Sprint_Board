@@ -8,7 +8,7 @@ dotenv.config();
 const { Pool } = pg;
 
 // Use your Railway URL from .env
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.postgresql://postgres:zRUvAMkJhtjWBKmXVTeWCKigTNPxAPic@shortline.proxy.rlwy.net:42052/railway;
 
 if (!connectionString || connectionString.trim() === '' || connectionString.includes('localhost')) {
     console.error("❌ Error: Please paste your Railway DATABASE_URL in the backend/.env file first!");

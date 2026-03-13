@@ -19,6 +19,15 @@ router.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', message: 'Sprint Board API is running' });
 });
 
+router.get('/health/db', async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT NOW()');
+        res.status(200).json({ status: 'ok', message: 'Database connected', time: rows[0].now });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: 'Database connection failed', error: err.message });
+    }
+});
+
 router.use('/auth', authRoutes);
 router.use('/teams', teamRoutes);
 router.use('/teams/:teamId/projects', projectRoutes);
