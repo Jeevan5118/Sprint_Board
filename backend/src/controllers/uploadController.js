@@ -48,7 +48,6 @@ export const toggleAttachment = async (req, res, next) => {
         // Zoho WorkDrive v1 API typically returns a list of uploaded files
         // Extracting data from Zoho response
         const zohoData = response.data.data?.[0]?.attributes || {};
-        const baseUrl = getWorkDriveBaseUrl();
         // Construct regional stream URL
         const streamBase = baseUrl.replace('/api/v1', '/api/v1/stream');
         const fileUrl = zohoData.permalink || response.data.permalink || `${streamBase}/${zohoData.resource_id}`;
