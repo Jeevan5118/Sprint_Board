@@ -159,9 +159,22 @@ export const importData = async (req, res, next) => {
                         summary.created++;
 
                     } else if (import_type === 'automate') {
-                        const { team, team_name, employee_name, name, mail, email, employee_email, password, role, employee_role, job_role, user_role, member_role, project, project_name, sprint, sprint_name, task_title, title, task_description, description, task_priority, priority, story_points, due_date } = row;
-                        const finalEmail = mail || email || employee_email;
-                        const finalName = employee_name || name || 'New Member';
+                        const {
+                            team, team_name, organization,
+                            employee_name, name, full_name, user_name, member_name,
+                            mail, email, employee_email, user_email, member_email,
+                            password,
+                            role, employee_role, job_role, user_role, member_role,
+                            project, project_name,
+                            sprint, sprint_name, target_sprint,
+                            task_title, title, subject,
+                            task_description, description, body,
+                            task_priority, priority, level,
+                            story_points, points,
+                            due_date, deadline
+                        } = row;
+                        const finalEmail = mail || email || employee_email || user_email || member_email;
+                        const finalName = employee_name || name || full_name || user_name || member_name || 'New Member';
 
                         // Handle missing email by generating one from name
                         let workingEmail = finalEmail;
@@ -278,12 +291,24 @@ export const importData = async (req, res, next) => {
                         summary.created++;
 
                     } else { // Tasks (Default)
-                        const { title, task_title, description, team, team_name, priority, story_points, due_date } = row;
-                        const finalEmail = row.mail || row.assignee_email || row.email || row.user_email || row.member_email || row.login || row.member_mail;
-                        const finalTeam = team || team_name;
-                        const finalName = row.name || row.assignee_name || row.member_name || row.full_name || row.user_name || 'New Member';
+                        const {
+                            title, task_title, name: task_name, subject,
+                            description, task_description, body,
+                            team, team_name, organization,
+                            priority, task_priority, level,
+                            story_points, points,
+                            due_date, deadline,
+                            assignee, user, member,
+                            mail, email, assignee_email, user_email, member_email, login, member_mail
+                        } = row;
 
-                        if (!(title || task_title) || !finalTeam) throw new Error('Missing title or team');
+                        const finalTeam = team || team_name || organization;
+                        const finalTitle = title || task_title || task_name || subject;
+                        const finalEmail = mail || assignee_email || email || user_email || member_email || login || member_mail;
+                        const finalName = row.name || assignee || member || user || row.assignee_name || row.member_name || row.full_name || row.user_name || 'New Member';
+                        const finalPriority = priority || task_priority || level || 'medium';
+
+                        if (!finalTitle || !finalTeam) throw new Error('Missing title or team');
 
                         // Handle missing email by generating one from name
                         let workingEmail = finalEmail;
@@ -318,11 +343,18 @@ export const importData = async (req, res, next) => {
                         }
 
                         let targetSprintId = null;
-                        const activeSprintCheck = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active'", [teamId]);
-                        if (activeSprintCheck.rows.length > 0) targetSprintId = activeSprintCheck.rows[0].id;
+                        const activeSprintCheck = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' LIMIT 1", [teamId]);
+                        if (activeSprintCheck.rows.length > 0) {
+                            targetSprintId = activeSprintCheck.rows[0].id;
+                        } else {
+                            // AUTO-FIX: Create and Activate a starting sprint so the user sees tasks on the board
+                            const ns = await client.query("INSERT INTO sprints (name, team_id, status) VALUES ($1, $2, 'Active') RETURNING id", ['Sprint 1', teamId]);
+                            targetSprintId = ns.rows[0].id;
+                            console.log(`Auto-created active sprint for team ${teamId} in default task import`);
+                        }
 
                         const pMap = { 'low': 'Low', 'medium': 'Medium', 'high': 'High', 'urgent': 'Urgent' };
-                        const finalPriority = pMap[(priority || 'medium').toLowerCase()] || 'Medium';
+                        const normalizedPriority = pMap[finalPriority.toLowerCase()] || 'Medium';
 
                         const { rows } = await client.query(
                             'SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2',
@@ -347,7 +379,7 @@ export const importData = async (req, res, next) => {
                         await client.query(`
                         INSERT INTO tasks (title, description, priority, status, story_points, due_date, team_id, sprint_id, assignee_id, creator_id, sort_order)
                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                    `, [title || row.task_title || 'Imported Task', description, finalPriority, targetSprintId ? 'To Do' : 'Backlog', parseInt(story_points) || 0, finalDueDate && !isNaN(finalDueDate.getTime()) ? finalDueDate : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order]);
+                    `, [finalTitle, description || task_description || body || '', normalizedPriority, 'To Do', parseInt(story_points || points) || 0, finalDueDate && !isNaN(finalDueDate.getTime()) ? finalDueDate : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order]);
 
                         summary.created++;
                     }
