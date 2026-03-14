@@ -15,7 +15,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as weekly_throughput
             FROM tasks t
             WHERE 1=1 
-            ${isAdmin ? '' : (req.user.role === 'Team Lead' ? 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)' : 'AND assignee_id = $1')}
+            ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
         `;
         const statsRes = await db.query(statsQuery, isAdmin ? [] : [userId]);
         const s = statsRes.rows[0];
@@ -40,7 +40,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
 
         // 3. Alerts & Timeline
         const isMember = req.user.role === 'Member';
-        const teamScope = isAdmin ? '' : (isMember ? 'AND assignee_id = $1' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)');
+        const teamScope = isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)';
         const teamParams = isAdmin ? [] : [userId];
 
         const overdueRes = await db.query(

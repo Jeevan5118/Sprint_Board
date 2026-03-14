@@ -24,7 +24,7 @@ export const createUser = async (req, res, next) => {
         }
 
         // Check if user exists
-        const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        const userExists = await db.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
         if (userExists.rows.length > 0) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -35,7 +35,7 @@ export const createUser = async (req, res, next) => {
 
         // Create user
         const newUser = await db.query(
-            'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, avatar_url',
+            'INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id, name, email, role, avatar_url',
             [name, email, passwordHash, role]
         );
 
@@ -123,12 +123,12 @@ export const importData = async (req, res, next) => {
 
                         // 1. User Logic
                         let userId;
-                        const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [finalEmail]);
+                        const userCheck = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [finalEmail]);
                         if (userCheck.rows.length === 0) {
                             const salt = await bcrypt.genSalt(10);
                             const hash = await bcrypt.hash(password || defaultPassword, salt);
                             const newUser = await client.query(
-                                'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
+                                'INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id',
                                 [finalName, finalEmail, hash, finalRole]
                             );
                             userId = newUser.rows[0].id;
@@ -207,11 +207,11 @@ export const importData = async (req, res, next) => {
 
                         let userId = req.user.id;
                         if (workingEmail && teamId) {
-                            const uc = await client.query('SELECT id FROM users WHERE email = $1', [workingEmail]);
+                            const uc = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [workingEmail]);
                             if (uc.rows.length === 0) {
                                 const salt = await bcrypt.genSalt(10);
                                 const h = await bcrypt.hash(rawPassword, salt);
-                                const nu = await client.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id', [finalName, workingEmail, h, finalRole]);
+                                const nu = await client.query('INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id', [finalName, workingEmail, h, finalRole]);
                                 userId = nu.rows[0].id;
                             } else userId = uc.rows[0].id;
 
@@ -322,13 +322,13 @@ export const importData = async (req, res, next) => {
                         const teamId = teamCheck.rows[0].id;
 
                         let assigneeId;
-                        const userCheck = await client.query('SELECT id FROM users WHERE email = $1', [workingEmail]);
+                        const userCheck = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [workingEmail]);
                         if (userCheck.rows.length === 0) {
                             // Automatically create missing user
                             const salt = await bcrypt.genSalt(10);
                             const hash = await bcrypt.hash(defaultPassword, salt);
                             const newUser = await client.query(
-                                'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id',
+                                'INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id',
                                 [finalName, workingEmail, hash, 'Member']
                             );
                             assigneeId = newUser.rows[0].id;
