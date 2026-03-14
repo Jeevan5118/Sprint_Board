@@ -28,7 +28,11 @@ export const getTasks = async (req, res, next) => {
             query += ` AND t.assignee_id = $${count++}`;
             params.push(assignee_id);
         }
-        // Removed restrictive Member-only filter to allow seeing full team board
+        // Logic 3: Restricted Member visibility
+        if (req.user.role === 'Member') {
+            query += ` AND t.assignee_id = $${count++}`;
+            params.push(req.user.id);
+        }
 
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
 
@@ -49,7 +53,11 @@ export const getKanbanTasks = async (req, res, next) => {
             WHERE t.team_id = $1 AND t.sprint_id IS NULL
         `;
         let params = [teamId];
-        // Removed restrictive Member-only filter for Kanban to allow seeing full team board
+        // Logic 3: Restricted Member visibility for Kanban
+        if (req.user.role === 'Member') {
+            query += ` AND t.assignee_id = $2`;
+            params.push(req.user.id);
+        }
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
         const { rows } = await db.query(query, params);
 
