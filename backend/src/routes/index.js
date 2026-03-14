@@ -9,6 +9,7 @@ import notificationRoutes from './notificationRoutes.js';
 import dashboardRoutes from './dashboardRoutes.js';
 import userRoutes from './userRoutes.js';
 import reportRoutes from './reportRoutes.js';
+import fileRoutes from './fileRoutes.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { getAllProjects } from '../controllers/projectController.js';
 import db from '../config/db.js';
@@ -39,6 +40,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/users', userRoutes);
 router.use('/reports', protect, reportRoutes);
+router.use('/files', fileRoutes);
 
 // Global cross-team project listing (used by the Projects page)
 router.get('/projects', protect, getAllProjects);

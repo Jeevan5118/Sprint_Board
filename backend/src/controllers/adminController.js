@@ -176,11 +176,9 @@ export const importData = async (req, res, next) => {
                         const finalEmail = mail || email || employee_email || user_email || member_email;
                         const finalName = employee_name || name || full_name || user_name || member_name || 'New Member';
 
-                        // Handle missing email by generating one from name
+                        // Handle missing email by checking if we have one, otherwise throw error
                         let workingEmail = finalEmail;
-                        if (!workingEmail && finalName && finalName !== 'New Member') {
-                            workingEmail = `${finalName.toLowerCase().replace(/\s+/g, '.')}@sprintboard.com`;
-                        }
+                        if (!workingEmail) throw new Error(`Missing email for member: ${finalName}`);
                         const finalRole = validateRole(role || employee_role || job_role || user_role || member_role);
                         const rawPassword = password || defaultPassword;
                         const finalTeam = team || team_name;
@@ -310,12 +308,9 @@ export const importData = async (req, res, next) => {
 
                         if (!finalTitle || !finalTeam) throw new Error('Missing title or team');
 
-                        // Handle missing email by generating one from name
+                        // Handle missing email
                         let workingEmail = finalEmail;
-                        if (!workingEmail && finalName) {
-                            workingEmail = `${finalName.toLowerCase().replace(/\s+/g, '.')}@sprintboard.com`;
-                        }
-                        if (!workingEmail) throw new Error('Missing email or name to identify user');
+                        if (!workingEmail) throw new Error(`Missing email for task assignment: ${finalTitle}`);
 
                         const teamCheck = await client.query('SELECT id FROM teams WHERE name = $1', [finalTeam]);
                         if (teamCheck.rows.length === 0) throw new Error(`Team ${finalTeam} not found`);

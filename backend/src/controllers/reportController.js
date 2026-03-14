@@ -1,165 +1,135 @@
-import axios from 'axios';
-import FormData from 'form-data';
-import dotenv from 'dotenv';
-import { getZohoAccessToken, getWorkDriveBaseUrl } from '../utils/zohoAuth.js';
-dotenv.config();
-
-/**
- * Common helper to find or create a user-named folder within a specific parent folder in Zoho
- */
-const getOrCreateUserFolder = async (parentFolderId, userName, authHeader) => {
-    try {
-        const baseUrl = getWorkDriveBaseUrl();
-        const listUrl = `${baseUrl}/files/${parentFolderId}/files`;
-        const listResponse = await axios.get(listUrl, { headers: authHeader });
-
-        const existingFolder = listResponse.data.data?.find(file =>
-            file.attributes.name === userName && file.attributes.type === 'folder'
-        );
-
-        if (existingFolder) {
-            return { id: existingFolder.id, isSubfolder: true };
-        }
-
-        const createUrl = `${baseUrl}/files`;
-        const createResponse = await axios.post(createUrl, {
-            data: {
-                attributes: {
-                    name: userName,
-                    parent_id: parentFolderId
-                },
-                type: "files"
-            }
-        }, { headers: authHeader });
-
-        return { id: createResponse.data.data.id, isSubfolder: true };
-    } catch (error) {
-        console.error(`Fallback: Subfolder logic failed for ${userName}:`, error.message);
-        return { id: parentFolderId, isSubfolder: false };
-    }
-};
-
-/**
- * Generic upload handler to relay files to a specific Zoho folder
- */
-const handleZohoUpload = async (file, targetFolderId, apiKey, customName = null) => {
-    const formData = new FormData();
-    formData.append('content', file.buffer, {
-        filename: customName || file.originalname,
-        contentType: file.mimetype,
-    });
-
-    const baseUrl = getWorkDriveBaseUrl();
-    const uploadUrl = `${baseUrl}/upload?parent_id=${targetFolderId}&override-name-exist=true`;
-
-    return axios.post(uploadUrl, formData, {
-        headers: {
-            ...formData.getHeaders(),
-            'Authorization': `Zoho-oauthtoken ${apiKey}`
-        },
-    });
-};
+import db from '../config/db.js';
 
 export const submitReport = async (req, res, next) => {
     try {
-        console.log(`[SubmitReport] Headers:`, JSON.stringify(req.headers));
-        console.log(`[SubmitReport] File:`, req.file ? 'Received' : 'MISSING');
+        if (!req.file) return res.status(400).json({ message: 'No report file provided' });
 
-        if (!req.file) return res.status(400).json({
-            message: 'No report file provided',
-            debug: { headers: req.headers['content-type'] }
-        });
+        const userId = req.user.id;
+        const { teamId, summary } = req.body;
+        const fileName = req.file.originalname;
 
-        const apiKey = await getZohoAccessToken();
-        const rootFolderId = process.env.ZOHO_WORKDRIVE_REPORTS_FOLDER_ID;
-        const userName = req.user.name || 'Unknown Member';
+        console.log(`Storing Structured Report in Database: ${fileName} for user ${userId}, team ${teamId}`);
 
-        const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
-
-        console.log(`[SubmitReport] Config Check: apiKey exists? ${!!apiKey}, rootFolderId: "${rootFolderId}"`);
-
-        if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
-            const missing = [];
-            if (isPlaceholder(apiKey)) missing.push('ZOHO_WORKDRIVE_API_KEY');
-            if (isPlaceholder(rootFolderId)) missing.push('ZOHO_WORKDRIVE_REPORTS_FOLDER_ID');
-            return res.status(500).json({
-                message: `Zoho Reports config missing: ${missing.join(', ')}`,
-                debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
-            });
+        // If teamId is provided, verify user belongs to it
+        if (teamId) {
+            const memberCheck = await db.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+            if (memberCheck.rows.length === 0 && req.user.role !== 'Admin') {
+                return res.status(403).json({ message: 'You are not a member of this team' });
+            }
         }
 
-        const authHeader = { 'Authorization': `Zoho-oauthtoken ${apiKey}` };
-        const { id: targetId, isSubfolder } = await getOrCreateUserFolder(rootFolderId, userName, authHeader);
-
-        let finalName = req.file.originalname;
-        if (!isSubfolder) {
-            const dateStr = new Date().toISOString().split('T')[0];
-            finalName = `${userName}_${dateStr}_${req.file.originalname}`;
-        }
-
-        const response = await handleZohoUpload(req.file, targetId, apiKey, finalName);
+        const newUpload = await db.query(
+            'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
+            [userId, teamId || null, fileName, req.file.buffer, 'Report', req.file.mimetype, JSON.stringify({ summary })]
+        );
 
         res.status(200).json({
-            message: isSubfolder ? `Report uploaded to folder: ${userName}` : `Report uploaded to root as: ${finalName}`,
-            zohoResponse: response.data
+            message: `Report uploaded successfully to internal storage`,
+            data: newUpload.rows[0]
         });
     } catch (error) {
-        const errorData = error.response?.data || error.message;
-        console.error('Zoho Report Error:', errorData);
-        res.status(error.response?.status || 500).json({
-            message: 'Failed to upload report to Zoho',
-            error: errorData
+        console.error('Database Report Upload Error:', error.message);
+        res.status(500).json({
+            message: 'Failed to upload report to internal storage',
+            error: error.message
         });
     }
 };
 
 export const uploadWork = async (req, res, next) => {
     try {
-        console.log(`[UploadWork] Headers:`, JSON.stringify(req.headers));
-        console.log(`[UploadWork] File:`, req.file ? 'Received' : 'MISSING');
+        if (!req.file) return res.status(400).json({ message: 'No work file provided' });
 
-        if (!req.file) return res.status(400).json({
-            message: 'No work file provided',
-            debug: { headers: req.headers['content-type'] }
-        });
+        const userId = req.user.id;
+        const { teamId, description } = req.body;
+        const fileName = req.file.originalname;
 
-        const apiKey = await getZohoAccessToken();
-        const rootFolderId = process.env.ZOHO_WORKDRIVE_WORK_FOLDER_ID;
-        const userName = req.user.name || 'Unknown Member';
+        console.log(`Storing Structured Work in Database: ${fileName} for user ${userId}, team ${teamId}`);
 
-        const isPlaceholder = (val) => !val || val.includes('your_') || val.startsWith('<');
-
-        if (isPlaceholder(apiKey) || isPlaceholder(rootFolderId)) {
-            const missing = [];
-            if (isPlaceholder(apiKey)) missing.push('ZOHO_WORKDRIVE_API_KEY');
-            if (isPlaceholder(rootFolderId)) missing.push('ZOHO_WORKDRIVE_WORK_FOLDER_ID');
-            return res.status(500).json({
-                message: `Zoho Work config missing: ${missing.join(', ')}`,
-                debug: { hasApiKey: !isPlaceholder(apiKey), folderId: rootFolderId }
-            });
-        }
-
-        const authHeader = { 'Authorization': `Zoho-oauthtoken ${apiKey}` };
-        const { id: targetId, isSubfolder } = await getOrCreateUserFolder(rootFolderId, userName, authHeader);
-
-        let finalName = req.file.originalname;
-        if (!isSubfolder) {
-            const dateStr = new Date().toISOString().split('T')[0];
-            finalName = `${userName}_${dateStr}_${req.file.originalname}`;
-        }
-
-        const response = await handleZohoUpload(req.file, targetId, apiKey, finalName);
+        const newUpload = await db.query(
+            'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
+            [userId, teamId || null, fileName, req.file.buffer, 'Work', req.file.mimetype, JSON.stringify({ description })]
+        );
 
         res.status(200).json({
-            message: isSubfolder ? `Work uploaded to folder: ${userName}` : `Work uploaded to root as: ${finalName}`,
-            zohoResponse: response.data
+            message: `Work uploaded successfully to internal storage`,
+            data: newUpload.rows[0]
         });
     } catch (error) {
-        const errorData = error.response?.data || error.message;
-        console.error('Zoho Work Upload Error:', errorData);
-        res.status(error.response?.status || 500).json({
-            message: 'Failed to upload work to Zoho',
-            error: errorData
+        console.error('Database Work Upload Error:', error.message);
+        res.status(500).json({
+            message: 'Failed to upload work to internal storage',
+            error: error.message
         });
+    }
+};
+
+/**
+ * Get structured list of uploads for the current user or a specific team
+ */
+export const getUploads = async (req, res, next) => {
+    try {
+        const { type, teamId, startDate, endDate } = req.query;
+        let query = `
+            SELECT u.id, u.file_name, u.file_type, u.mimetype, u.uploaded_at, u.metadata, 
+                   usr.name as user_name, t.name as team_name
+            FROM user_uploads u
+            LEFT JOIN users usr ON u.user_id = usr.id
+            LEFT JOIN teams t ON u.team_id = t.id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        // Role-based filtering
+        if (req.user.role === 'Admin') {
+            // Admin can see everything, but can filter by team
+            if (teamId) {
+                params.push(teamId);
+                query += ` AND u.team_id = $${params.length}`;
+            }
+        } else if (req.user.role === 'Team Lead') {
+            // Team Lead can see their own and their teams' uploads
+            // For now, simplify to just their own unless teamId is provided and they lead it
+            if (teamId) {
+                params.push(teamId);
+                query += ` AND u.team_id = $${params.length}`;
+            } else {
+                params.push(req.user.id);
+                query += ` AND u.user_id = $${params.length}`;
+            }
+        } else {
+            // Member only sees their own
+            params.push(req.user.id);
+            query += ` AND u.user_id = $${params.length}`;
+        }
+
+        if (type) {
+            params.push(type);
+            query += ` AND u.file_type = $${params.length}`;
+        }
+
+        if (startDate) {
+            params.push(startDate);
+            query += ` AND u.uploaded_at >= $${params.length}`;
+        }
+
+        if (endDate) {
+            params.push(endDate);
+            query += ` AND u.uploaded_at <= $${params.length}`;
+        }
+
+        query += ' ORDER BY u.uploaded_at DESC';
+
+        const { rows } = await db.query(query, params);
+
+        // Add internal URLs for convenience
+        const uploads = rows.map(u => ({
+            ...u,
+            file_url: `${process.env.BACKEND_URL || ''}/api/v1/files/uploads/${u.id}`
+        }));
+
+        res.json(uploads);
+    } catch (error) {
+        next(error);
     }
 };

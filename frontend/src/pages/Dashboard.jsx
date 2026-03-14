@@ -92,6 +92,22 @@ const Dashboard = () => {
     const [analyticsModal, setAnalyticsModal] = useState(null); // filter string
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
     const [isUploadingWork, setIsUploadingWork] = useState(false);
+    const [recentUploads, setRecentUploads] = useState([]);
+
+    const fetchDashboard = async () => {
+        try {
+            const [dashRes, uploadsRes] = await Promise.all([
+                api.get('/dashboard/analytics'),
+                api.get('/reports')
+            ]);
+            setData(dashRes.data);
+            setRecentUploads(uploadsRes.data);
+        } catch (err) {
+            toast.error('Failed to load dashboard data');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleReportSubmit = async (e) => {
         const file = e.target.files[0];
@@ -100,15 +116,20 @@ const Dashboard = () => {
         setIsSubmittingReport(true);
         const formData = new FormData();
         formData.append('report', file);
+        // Automatically attach to the first team if available
+        if (data?.teams?.length > 0) {
+            formData.append('teamId', data.teams[0].id);
+        }
 
-        const loadingToast = toast.loading(`Uploading ${file.name} to Zoho WorkDrive...`);
+        const loadingToast = toast.loading(`Uploading ${file.name} to internal storage...`);
         try {
             await api.post('/reports/submit', formData);
             toast.success("Today's report submitted successfully!", { id: loadingToast });
+            fetchDashboard(); // Refresh history
         } catch (err) {
             const errorDetail = err.response?.data?.error;
             const message = typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : (errorDetail || err.response?.data?.message || "Internal Server Error");
-            toast.error(`Zoho Error: ${message}`, { id: loadingToast, duration: 6000 });
+            toast.error(`Upload Error: ${message}`, { id: loadingToast, duration: 6000 });
         } finally {
             setIsSubmittingReport(false);
             // Reset input
@@ -123,15 +144,20 @@ const Dashboard = () => {
         setIsUploadingWork(true);
         const formData = new FormData();
         formData.append('work', file);
+        // Automatically attach to the first team if available
+        if (data?.teams?.length > 0) {
+            formData.append('teamId', data.teams[0].id);
+        }
 
-        const loadingToast = toast.loading(`Uploading ${file.name} to Zoho Works...`);
+        const loadingToast = toast.loading(`Uploading ${file.name} to internal storage...`);
         try {
             await api.post('/reports/work', formData);
             toast.success("Work uploaded successfully!", { id: loadingToast });
+            fetchDashboard(); // Refresh history
         } catch (err) {
             const errorDetail = err.response?.data?.error;
             const message = typeof errorDetail === 'object' ? JSON.stringify(errorDetail) : (errorDetail || err.response?.data?.message || "Internal Server Error");
-            toast.error(`Zoho Error: ${message}`, { id: loadingToast, duration: 6000 });
+            toast.error(`Upload Error: ${message}`, { id: loadingToast, duration: 6000 });
         } finally {
             setIsUploadingWork(false);
             // Reset input
@@ -142,16 +168,6 @@ const Dashboard = () => {
     const canSubmitReport = user?.role === 'Member' || user?.role === 'Team Lead';
 
     useEffect(() => {
-        const fetchDashboard = async () => {
-            try {
-                const res = await api.get('/dashboard/analytics');
-                setData(res.data);
-            } catch (err) {
-                toast.error('Failed to load dashboard data');
-            } finally {
-                setIsLoading(false);
-            }
-        };
         fetchDashboard();
     }, []);
 
@@ -332,6 +348,49 @@ const Dashboard = () => {
                             {data.alerts.length === 0 && <p className="text-sm text-slate-500">No active alerts. Great work! 🎉</p>}
                         </ul>
                     </div>
+
+                    {/* Structured Uploads History */}
+                    <div className="card">
+                        <div className="flex items-center mb-4 text-emerald-600">
+                            <FileText className="w-5 h-5 mr-2" />
+                            <h2 className="text-lg font-semibold text-slate-800">Recent Uploads</h2>
+                        </div>
+                        <div className="space-y-4">
+                            {recentUploads.length === 0 ? (
+                                <p className="text-sm text-slate-400 text-center py-4">No recent uploads found.</p>
+                            ) : (
+                                recentUploads.slice(0, 5).map(upload => (
+                                    <div key={upload.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold text-slate-900 truncate">{upload.file_name}</p>
+                                            <div className="flex items-center mt-1 space-x-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                <span className={`px-1.5 py-0.5 rounded ${upload.file_type === 'Report' ? 'bg-blue-100 text-blue-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                                                    {upload.file_type}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{new Date(upload.uploaded_at).toLocaleDateString()}</span>
+                                                {upload.team_name && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span className="text-slate-500">{upload.team_name}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <a 
+                                            href={upload.file_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="ml-4 p-2 text-slate-400 hover:text-primary-blue hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"
+                                        >
+                                            <ArrowUpRight className="w-4 h-4" />
+                                        </a>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
 
