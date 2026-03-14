@@ -145,9 +145,11 @@ export const getAllUsers = async (req, res, next) => {
 export const deleteTeam = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        // Role check (Admin only) is done in routes
         const { rows } = await db.query('DELETE FROM teams WHERE id = $1 RETURNING *', [teamId]);
         if (rows.length === 0) return res.status(404).json({ message: 'Team not found' });
         res.json({ message: 'Team deleted successfully', team: rows[0] });
-    } catch (error) { next(error); }
+    } catch (error) {
+        console.error('Delete Team Error:', error);
+        next(error);
+    }
 };

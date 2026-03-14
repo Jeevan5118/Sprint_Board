@@ -44,7 +44,7 @@ export const getKanbanTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
 
-        const query = `
+        let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
