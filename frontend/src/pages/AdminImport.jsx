@@ -4,7 +4,7 @@ import { UploadCloud, CheckCircle, AlertTriangle, FileText } from 'lucide-react'
 
 const AdminImport = () => {
     const [file, setFile] = useState(null);
-    const [importType, setImportType] = useState('tasks');
+    const [importType, setImportType] = useState('automate');
     const [isUploading, setIsUploading] = useState(false);
     const [results, setResults] = useState(null);
     const [error, setError] = useState('');
@@ -44,33 +44,33 @@ const AdminImport = () => {
     };
 
     const importHelp = {
-        employees: 'Format: name, email, team, role (optional). Supports CSV, Excel, and PDF.',
-        teams: 'Format: name, description (optional). Setup your organizational structure.',
-        projects: 'Format: name, team, description (optional). Group your work by projects.',
-        tasks: 'Format: title, assignee_email, team, description (optional). Batch create tasks.',
-        automate: 'Master Setup: Setup Accounts, Teams, Projects, and Tasks. Supports CSV, XLSX, and PDF.'
+        employees: 'Format: Name, Email, Team, Role. Auto-creates accounts and maps users to teams.',
+        teams: 'Format: Name, Description. Setup your organization structure instantly.',
+        projects: 'Format: Name, Team, Description. Organize work into scoped projects.',
+        tasks: 'Format: Title, Team, Email (Optional). Auto-creates missing users & activates boards!',
+        automate: 'Master Setup: Batch create Teams, Projects, Users, and Tasks with Board activation! ⭐'
     };
 
     const csvTemplates = {
         automate: [
-            { header: 'Task Title', desc: 'Heading of the task' },
-            { header: 'Name', desc: 'Assignee name (Auto-creates account!)' },
-            { header: 'Team', desc: 'Team name (Connects user to team)' },
-            { header: 'Description', desc: 'Task details (Optional)' },
+            { header: 'Task Title', desc: 'Title or Subject' },
+            { header: 'Team Name', desc: 'Team or Organization (Auto-creates!)' },
+            { header: 'Assignee Name', desc: 'Full Name (Account auto-creation)' },
             { header: 'Priority', desc: 'Urgent, High, Medium, Low' },
-            { header: 'Due Date', desc: 'DD-MM-YYYY supported!' },
+            { header: 'Sprint', desc: 'Name (Auto-activates on board!)' },
+            { header: 'Deadline', desc: 'Due date (DD-MM-YYYY)' },
         ],
         employees: [
-            { header: 'Employee Name', desc: 'Full name' },
-            { header: 'Mail', desc: 'Email address' },
-            { header: 'Team', desc: 'Team name' },
+            { header: 'Employee Name', desc: 'Full name or User name' },
+            { header: 'Mail', desc: 'Email address (Auto-generated if missing)' },
+            { header: 'Team', desc: 'Target team name' },
             { header: 'Role', desc: 'Admin, Team Lead, or Member' },
         ],
         tasks: [
-            { header: 'Task Title', desc: 'Task heading' },
-            { header: 'Team Name', desc: 'Associated team' },
-            { header: 'Assignee Email', desc: 'Email of owner' },
-            { header: 'Story Points', desc: 'Complexity score' },
+            { header: 'Task Title', desc: 'Title, Subject, or Name' },
+            { header: 'Team Name', desc: 'Required for board mapping' },
+            { header: 'Assignee Email', desc: 'Email or Login' },
+            { header: 'Points', desc: 'Story points / complexity' },
         ]
     };
 
