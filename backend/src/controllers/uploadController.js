@@ -1,8 +1,5 @@
-import axios from 'axios';
-import FormData from 'form-data';
 import db from '../config/db.js';
 import dotenv from 'dotenv';
-import { getZohoAccessToken, getWorkDriveBaseUrl } from '../utils/zohoAuth.js';
 dotenv.config();
 
 export const toggleAttachment = async (req, res, next) => {
