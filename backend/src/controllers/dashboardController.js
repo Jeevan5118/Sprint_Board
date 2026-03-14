@@ -44,21 +44,21 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const teamParams = isAdmin ? [] : [userId];
 
         const overdueRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' ${teamScope} ORDER BY due_date ASC LIMIT 5`,
-            teamParams
+            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} ORDER BY due_date ASC LIMIT 5`,
+            isAdmin ? [] : [userId]
         );
         const upcomingRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' ${teamScope} ORDER BY due_date ASC LIMIT 5`,
-            teamParams
+            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} ORDER BY due_date ASC LIMIT 5`,
+            isAdmin ? [] : [userId]
         );
         const activityRes = await db.query(
             `SELECT c.id, c.content, u.name as actor, c.created_at, t.title as task_title
              FROM comments c 
              JOIN users u ON c.user_id = u.id 
              JOIN tasks t ON c.task_id = t.id
-             WHERE 1=1 ${isAdmin ? '' : (isMember ? 'AND (t.assignee_id = $1 OR c.user_id = $1)' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)')}
+             WHERE 1=1 ${isAdmin ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
              ORDER BY c.created_at DESC LIMIT 8`,
-            teamParams
+            isAdmin ? [] : [userId]
         );
         console.log(`Dashboard activity filtered for ${req.user.role} ${userId}`);
 

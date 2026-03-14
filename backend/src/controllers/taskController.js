@@ -27,11 +27,8 @@ export const getTasks = async (req, res, next) => {
         if (assignee_id) {
             query += ` AND t.assignee_id = $${count++}`;
             params.push(assignee_id);
-        } else if (req.user.role === 'Member') {
-            // Role Logic: Members ONLY see tasks assigned to them
-            query += ` AND t.assignee_id = $${count++}`;
-            params.push(req.user.id);
         }
+        // Removed restrictive Member-only filter to allow seeing full team board
 
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
 
@@ -52,10 +49,7 @@ export const getKanbanTasks = async (req, res, next) => {
             WHERE t.team_id = $1 AND t.sprint_id IS NULL
         `;
         let params = [teamId];
-        if (req.user.role === 'Member') {
-            query += ' AND t.assignee_id = $2';
-            params.push(req.user.id);
-        }
+        // Removed restrictive Member-only filter for Kanban to allow seeing full team board
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
         const { rows } = await db.query(query, params);
 
