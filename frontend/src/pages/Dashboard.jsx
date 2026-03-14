@@ -391,7 +391,6 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
-                </div>
             </div>
 
             {/* Team Analytics Modal */}
