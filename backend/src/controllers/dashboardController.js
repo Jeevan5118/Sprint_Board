@@ -16,6 +16,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
             FROM tasks t
             WHERE 1=1 
             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
+            ${isMember ? 'AND t.assignee_id = $1' : ''}
         `;
         const statsRes = await db.query(statsQuery, isAdmin ? [] : [userId]);
         const s = statsRes.rows[0];
@@ -33,6 +34,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
             FROM teams t
             LEFT JOIN tasks tk ON t.id = tk.team_id
             ${isAdmin ? '' : 'JOIN team_members tm ON t.id = tm.team_id WHERE tm.user_id = $1'}
+            ${isMember ? 'AND tk.assignee_id = $1' : ''}
             GROUP BY t.id, t.name
             ORDER BY t.name
         `;
@@ -44,11 +46,17 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const teamParams = isAdmin ? [] : [userId];
 
         const overdueRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} ORDER BY due_date ASC LIMIT 5`,
+            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' 
+             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} 
+             ${isMember ? 'AND assignee_id = $1' : ''} 
+             ORDER BY due_date ASC LIMIT 5`,
             isAdmin ? [] : [userId]
         );
         const upcomingRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} ORDER BY due_date ASC LIMIT 5`,
+            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' 
+             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} 
+             ${isMember ? 'AND assignee_id = $1' : ''} 
+             ORDER BY due_date ASC LIMIT 5`,
             isAdmin ? [] : [userId]
         );
         const activityRes = await db.query(
