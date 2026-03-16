@@ -338,7 +338,7 @@ const Settings = () => {
                                                         </div>
                                                         <div className="flex items-center space-x-2">
                                                             <a
-                                                                href={upload.file_url}
+                                                                href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 title="View/Download"

@@ -6,6 +6,8 @@ export const protect = async (req, res, next) => {
 
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         token = req.headers.authorization.split(' ')[1];
+    } else if (req.query.token) {
+        token = req.query.token;
     }
 
     if (!token) {
@@ -25,10 +27,10 @@ export const protect = async (req, res, next) => {
         next();
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-             return res.status(401).json({ message: 'Session expired, please login again' });
+            return res.status(401).json({ message: 'Session expired, please login again' });
         }
         if (error.name === 'JsonWebTokenError') {
-             return res.status(401).json({ message: 'Invalid token, authorization denied' });
+            return res.status(401).json({ message: 'Invalid token, authorization denied' });
         }
         res.status(401).json({ message: 'Not authorized, token failed' });
     }
