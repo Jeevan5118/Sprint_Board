@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock } from 'lucide-react';
+import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
@@ -15,13 +15,16 @@ const Settings = () => {
 
     // Password State
     const [currentPassword, setCurrentPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
     const [isSavingPassword, setIsSavingPassword] = useState(false);
 
     // Admin Creation State
     const [newUserName, setNewUserName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
+    const [showAdminPassword, setShowAdminPassword] = useState(false);
     const [newUserRole, setNewUserRole] = useState('Member');
     const [newUserTeamId, setNewUserTeamId] = useState('');
     const [teams, setTeams] = useState([]);
@@ -196,11 +199,29 @@ const Settings = () => {
                             <form onSubmit={handlePasswordSubmit} className="space-y-5">
                                 <div>
                                     <label className="label-field">Current Password</label>
-                                    <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="input-field" />
+                                    <div className="relative">
+                                        <input type={showCurrentPassword ? "text" : "password"} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className="input-field pr-10" />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                        >
+                                            {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="label-field">New Password</label>
-                                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="input-field" minLength={8} />
+                                    <div className="relative">
+                                        <input type={showNewPassword ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="input-field pr-10" minLength={8} />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                        >
+                                            {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
+                                    </div>
                                     <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters long.</p>
                                 </div>
                                 <div className="pt-4 flex justify-end">
@@ -262,7 +283,16 @@ const Settings = () => {
                                 </div>
                                 <div>
                                     <label className="label-field">Temporary Password</label>
-                                    <input type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required minLength={8} className="input-field" placeholder="••••••••" />
+                                    <div className="relative">
+                                        <input type={showAdminPassword ? "text" : "password"} value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required minLength={8} className="input-field pr-10" placeholder="••••••••" />
+                                        <button
+                                            type="button"
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                            onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                        >
+                                            {showAdminPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="label-field">Assign to Team (Optional)</label>
