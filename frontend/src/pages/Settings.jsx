@@ -301,40 +301,54 @@ const Settings = () => {
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
-                                    {globalReports.map(upload => (
-                                        <div key={upload.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:shadow-md transition-all group">
-                                            <div className="flex items-center">
-                                                <div className={`p-2.5 rounded-lg mr-4 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                    <FileText className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-slate-900">{upload.file_name}</p>
-                                                    <div className="flex items-center mt-0.5 space-x-3 text-[11px] font-bold text-slate-400 tracking-tight uppercase">
-                                                        <span className="flex items-center text-slate-600">
-                                                            <User className="w-3 h-3 mr-1" /> {upload.user_name}
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span className="flex items-center text-slate-500">
-                                                            <Users className="w-3 h-3 mr-1" /> {upload.team_name || 'Individual'}
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span className="flex items-center">
-                                                            <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                                <div className="space-y-8">
+                                    {Object.entries(
+                                        globalReports.reduce((acc, report) => {
+                                            const name = report.user_name || 'Unassigned';
+                                            if (!acc[name]) acc[name] = [];
+                                            acc[name].push(report);
+                                            return acc;
+                                        }, {})
+                                    ).map(([userName, reports]) => (
+                                        <div key={userName} className="space-y-3">
+                                            <div className="flex items-center space-x-2 border-b border-slate-100 pb-1.5">
+                                                <User className="w-4 h-4 text-slate-400" />
+                                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">{userName}</h3>
+                                                <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-md font-bold">{reports.length}</span>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <a
-                                                    href={upload.file_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    title="View/Download"
-                                                    className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-100"
-                                                >
-                                                    <Download className="w-5 h-5" />
-                                                </a>
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {reports.map(upload => (
+                                                    <div key={upload.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:shadow-md transition-all group">
+                                                        <div className="flex items-center">
+                                                            <div className={`p-2.5 rounded-lg mr-4 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                <FileText className="w-5 h-5" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-900">{upload.file_name}</p>
+                                                                <div className="flex items-center mt-0.5 space-x-3 text-[11px] font-bold text-slate-400 tracking-tight uppercase">
+                                                                    <span className="flex items-center text-slate-500">
+                                                                        <Users className="w-3 h-3 mr-1" /> {upload.team_name || 'Individual'}
+                                                                    </span>
+                                                                    <span>•</span>
+                                                                    <span className="flex items-center">
+                                                                        <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <a
+                                                                href={upload.file_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                title="View/Download"
+                                                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-100"
+                                                            >
+                                                                <Download className="w-5 h-5" />
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     ))}
