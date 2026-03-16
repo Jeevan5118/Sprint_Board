@@ -4,6 +4,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
     try {
         const userId = req.user.id;
         const isAdmin = req.user.role === 'Admin';
+        const isMember = req.user.role === 'Member';
 
         // 1. Overall Metrics
         const statsQuery = `
@@ -18,10 +19,11 @@ export const getDashboardAnalytics = async (req, res, next) => {
             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
             ${isMember ? 'AND t.assignee_id = $1' : ''}
         `;
-        const statsRes = await db.query(statsQuery, isAdmin ? [] : [userId]);
+        const statsParams = isAdmin ? [] : [userId];
+        const statsRes = await db.query(statsQuery, statsParams);
         const s = statsRes.rows[0];
 
-        // 2. Team-wise Analytics (Consolidated)
+        // 2. Team-wise Analytics
         const teamStatsQuery = `
             SELECT 
                 t.id, t.name,
@@ -38,13 +40,10 @@ export const getDashboardAnalytics = async (req, res, next) => {
             GROUP BY t.id, t.name
             ORDER BY t.name
         `;
-        const teamsRes = await db.query(teamStatsQuery, isAdmin ? [] : [userId]);
+        const teamStatsParams = isAdmin ? [] : [userId];
+        const teamsRes = await db.query(teamStatsQuery, teamStatsParams);
 
         // 3. Alerts & Timeline
-        const isMember = req.user.role === 'Member';
-        const teamScope = isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)';
-        const teamParams = isAdmin ? [] : [userId];
-
         const overdueRes = await db.query(
             `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' 
              ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'} 
