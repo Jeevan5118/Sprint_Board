@@ -127,6 +127,19 @@ export const updateUserProfile = async (req, res, next) => {
     try {
         const { name, email } = req.body;
         const userId = req.user.id;
+        const isMember = req.user.role === 'Member';
+
+        // Security restriction: Members cannot change their name or email
+        if (isMember) {
+            // Check if they are actually trying to change anything restricted
+            const { rows: currentUser } = await db.query('SELECT name, email FROM users WHERE id = $1', [userId]);
+            if (currentUser[0].name !== name || currentUser[0].email !== email) {
+                return res.status(403).json({
+                    message: 'Security Policy: Registered members cannot change their official name or email. Please contact Admin for identity updates.'
+                });
+            }
+        }
+
         const { rows } = await db.query(
             'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING id, name, email, role, avatar_url',
             [name, email, userId]

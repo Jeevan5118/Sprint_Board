@@ -168,17 +168,24 @@ const Settings = () => {
                             <form onSubmit={handleProfileSubmit} className="space-y-5">
                                 <div>
                                     <label className="label-field">Full Name</label>
-                                    <input type="text" value={name} onChange={e => setName(e.target.value)} required className="input-field bg-slate-50" />
+                                    <input type="text" value={name} onChange={e => setName(e.target.value)} required disabled={user?.role === 'Member'} className={`input-field ${user?.role === 'Member' ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'bg-slate-50'}`} />
                                 </div>
                                 <div>
                                     <label className="label-field">Email Address</label>
-                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="input-field bg-slate-50" />
+                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} required disabled={user?.role === 'Member'} className={`input-field ${user?.role === 'Member' ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'bg-slate-50'}`} />
                                 </div>
-                                <div className="pt-4 flex justify-end">
-                                    <button type="submit" disabled={isSavingProfile} className="btn-primary">
-                                        {isSavingProfile ? 'Saving...' : 'Save Changes'}
-                                    </button>
-                                </div>
+                                {user?.role !== 'Member' && (
+                                    <div className="pt-4 flex justify-end">
+                                        <button type="submit" disabled={isSavingProfile} className="btn-primary">
+                                            {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                                        </button>
+                                    </div>
+                                )}
+                                {user?.role === 'Member' && (
+                                    <div className="pt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 border-dashed">
+                                        <p className="text-xs text-slate-500 font-medium italic">Identity details are managed by Admin. Please contact support for updates.</p>
+                                    </div>
+                                )}
                             </form>
                         </div>
                     )}
