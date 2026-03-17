@@ -410,12 +410,9 @@ const Settings = () => {
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 flex flex-wrap gap-1.5">
-                                                    {auditData.filter(m => m.has_submitted).slice(0, 5).map(m => (
+                                                    {auditData.filter(m => m.has_submitted).map(m => (
                                                         <span key={m.id} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100/50">{m.name}</span>
                                                     ))}
-                                                    {auditData.filter(m => m.has_submitted).length > 5 && (
-                                                        <span className="text-[10px] font-bold text-slate-400 px-2 py-1">+ {auditData.filter(m => m.has_submitted).length - 5} more</span>
-                                                    )}
                                                 </div>
                                             </div>
 
@@ -430,12 +427,9 @@ const Settings = () => {
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 flex flex-wrap gap-1.5">
-                                                    {auditData.filter(m => !m.has_submitted).slice(0, 5).map(m => (
+                                                    {auditData.filter(m => !m.has_submitted).map(m => (
                                                         <span key={m.id} className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded-md border border-rose-100/50">{m.name}</span>
                                                     ))}
-                                                    {auditData.filter(m => !m.has_submitted).length > 5 && (
-                                                        <span className="text-[10px] font-bold text-slate-400 px-2 py-1">+ {auditData.filter(m => !m.has_submitted).length - 5} more</span>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>
