@@ -40,7 +40,8 @@ const TaskCard = ({ task, onClick, onDelete, isOverlay }) => {
             {...listeners}
             {...attributes}
             onClick={() => onClick && onClick(task)}
-            className={`bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab active:cursor-grabbing mb-3 hover:border-primary-blue transition-colors ${isDragging ? 'shadow-lg border-primary-blue bg-blue-50/50 relative z-50' : ''
+            className={`bg-white p-3 rounded-lg shadow-sm border cursor-grab active:cursor-grabbing mb-3 transition-all ${isDragging ? 'shadow-xl border-primary-blue bg-blue-50/50 scale-[1.02] relative z-50 ring-2 ring-primary-blue/20' :
+                isOver ? 'border-primary-blue bg-primary-blue/5 scale-[0.98]' : 'border-slate-200 hover:border-primary-blue'
                 }`}
         >
             <div className="flex justify-between items-start mb-2 gap-2">

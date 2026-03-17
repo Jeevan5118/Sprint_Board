@@ -60,7 +60,7 @@ const KanbanBoard = () => {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8,
+                distance: 10,
             },
         }),
         useSensor(KeyboardSensor, {
@@ -113,15 +113,17 @@ const KanbanBoard = () => {
         const taskId = active.id.toString().replace('task-', '');
         const sourceStatus = active.data.current?.status;
 
-        // Resolve destination status:
-        // 1. over.data.current.status (set on columns and task-cards)
-        // 2. over.id (fallback if it is a column name)
-        let destStatus = over.data.current?.status || over.id;
+        // Resolve destination status with higher precision:
+        // 1. Check if 'over' is a column (over.id is in COLUMNS)
+        // 2. Check if 'over' is a task (extract status from over.data.current)
+        let destStatus = null;
+        if (COLUMNS.includes(over.id)) {
+            destStatus = over.id;
+        } else if (over.data.current?.status) {
+            destStatus = over.data.current.status;
+        }
 
-        // If it's a task ID (starts with droppable-task-), we don't want to use it as a status
-        if (typeof destStatus === 'string' && destStatus.startsWith('droppable-task-')) return;
-
-        // Final validation: must be one of the defined columns
+        // Final validation and move logic
         if (!destStatus || !COLUMNS.includes(destStatus) || sourceStatus === destStatus) return;
 
         const destTasks = tasks.filter(t => t.status === destStatus);
