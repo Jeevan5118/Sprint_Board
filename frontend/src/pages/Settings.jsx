@@ -126,41 +126,43 @@ const Settings = () => {
 
             <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden flex flex-col md:flex-row min-h-[500px]">
                 {/* Sidebar Tabs */}
-                <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 space-y-2">
-                    <button
-                        onClick={() => setActiveTab('profile')}
-                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'profile' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                        <User className="w-4 h-4 mr-3" /> Profile Details
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('password')}
-                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'password' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                        <Lock className="w-4 h-4 mr-3" /> Security & Password
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('notifications')}
-                        className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'notifications' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
-                    >
-                        <Bell className="w-4 h-4 mr-3" /> Notifications
-                    </button>
-                    {user?.role === 'Admin' && (
+                <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 shrink-0">
+                    <div className="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide">
                         <button
-                            onClick={handleAdminTabClick}
-                            className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'admin_users' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                            onClick={() => setActiveTab('profile')}
+                            className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'profile' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
                         >
-                            <Users className="w-4 h-4 mr-3" /> User Management
+                            <User className="w-4 h-4 mr-3" /> Profile Details
                         </button>
-                    )}
-                    {user?.role === 'Admin' && (
                         <button
-                            onClick={handleGlobalReportsTabClick}
-                            className={`w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${activeTab === 'global_reports' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                            onClick={() => setActiveTab('password')}
+                            className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'password' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
                         >
-                            <FileText className="w-4 h-4 mr-3" /> Global Reports
+                            <Lock className="w-4 h-4 mr-3" /> Security & Password
                         </button>
-                    )}
+                        <button
+                            onClick={() => setActiveTab('notifications')}
+                            className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'notifications' ? 'bg-primary-blue text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                        >
+                            <Bell className="w-4 h-4 mr-3" /> Notifications
+                        </button>
+                        {user?.role === 'Admin' && (
+                            <button
+                                onClick={handleAdminTabClick}
+                                className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'admin_users' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                <Users className="w-4 h-4 mr-3" /> User Management
+                            </button>
+                        )}
+                        {user?.role === 'Admin' && (
+                            <button
+                                onClick={handleGlobalReportsTabClick}
+                                className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'global_reports' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                <FileText className="w-4 h-4 mr-3" /> Global Reports
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content Area */}

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Bell, Search, Menu, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-const Navbar = () => {
+const Navbar = ({ onMenuClick }) => {
     const { user, logout } = useAuth();
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -46,9 +46,12 @@ const Navbar = () => {
     };
 
     return (
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-30 relative">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shadow-sm z-30 relative">
             <div className="flex items-center">
-                <button className="md:hidden text-slate-500 hover:text-slate-700 mr-4">
+                <button
+                    onClick={onMenuClick}
+                    className="md:hidden text-slate-500 hover:text-slate-700 mr-4 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                >
                     <Menu className="w-6 h-6" />
                 </button>
                 <div className="relative hidden sm:block">

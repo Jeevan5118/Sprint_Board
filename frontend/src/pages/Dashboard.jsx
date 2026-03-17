@@ -192,12 +192,12 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
                     <p className="text-sm text-slate-500 mt-1">Welcome back, {user?.name} 👋</p>
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     {canSubmitReport && (
                         <div className="relative">
                             <input
@@ -209,10 +209,10 @@ const Dashboard = () => {
                             />
                             <label
                                 htmlFor="report-upload"
-                                className={`flex items-center px-4 py-2 bg-primary-blue text-white rounded-xl font-bold text-sm shadow-lg shadow-primary-blue/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all cursor-pointer ${isSubmittingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center justify-center px-4 py-2.5 bg-primary-blue text-white rounded-xl font-bold text-sm shadow-lg shadow-primary-blue/20 hover:bg-blue-700 hover:-translate-y-0.5 transition-all cursor-pointer ${isSubmittingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <FileText className="w-4 h-4 mr-2" />
-                                {isSubmittingReport ? 'Submitting...' : "Submit Today's Report"}
+                                {isSubmittingReport ? 'Submitting...' : "Daily Report"}
                                 <Upload className="w-3.5 h-3.5 ml-2 opacity-70" />
                             </label>
                         </div>
@@ -228,7 +228,7 @@ const Dashboard = () => {
                             />
                             <label
                                 htmlFor="work-upload"
-                                className={`flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all cursor-pointer ${isUploadingWork ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`flex items-center justify-center px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all cursor-pointer ${isUploadingWork ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <Upload className="w-4 h-4 mr-2" />
                                 {isUploadingWork ? 'Uploading...' : "Upload Work"}
@@ -236,7 +236,7 @@ const Dashboard = () => {
                             </label>
                         </div>
                     )}
-                    <p className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 hidden md:block">Click any stat card to see team breakdown</p>
+                    <p className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 hidden lg:block text-center">Stats are clickable</p>
                 </div>
             </div>
 
@@ -377,9 +377,9 @@ const Dashboard = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <a 
-                                            href={upload.file_url} 
-                                            target="_blank" 
+                                        <a
+                                            href={upload.file_url}
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             className="ml-4 p-2 text-slate-400 hover:text-primary-blue hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"
                                         >
