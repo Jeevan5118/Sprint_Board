@@ -133,3 +133,42 @@ export const getUploads = async (req, res, next) => {
         next(error);
     }
 };
+
+/**
+ * Get audit of which users have/haven't submitted reports for a specific date
+ */
+export const getReportAudit = async (req, res, next) => {
+    try {
+        const { date } = req.query;
+        const targetDate = date || new Date().toISOString().split('T')[0];
+
+        console.log(`Auditing report submissions for date: ${targetDate}`);
+
+        const query = `
+            SELECT 
+                u.id, 
+                u.name, 
+                u.role, 
+                u.email,
+                t.name as team_name,
+                EXISTS (
+                    SELECT 1 
+                    FROM user_uploads up 
+                    WHERE up.user_id = u.id 
+                    AND up.file_type = 'Report' 
+                    AND up.uploaded_at::date = $1::date
+                ) as has_submitted
+            FROM users u
+            LEFT JOIN team_members tm ON u.id = tm.user_id
+            LEFT JOIN teams t ON tm.team_id = t.id
+            WHERE u.role IN ('Member', 'Team Lead')
+            ORDER BY u.name ASC
+        `;
+
+        const { rows } = await db.query(query, [targetDate]);
+        res.json(rows);
+    } catch (error) {
+        console.error('Report Audit Error:', error.message);
+        res.status(500).json({ message: 'Failed to generate report audit' });
+    }
+};

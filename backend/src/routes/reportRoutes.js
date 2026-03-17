@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { submitReport, uploadWork, getUploads } from '../controllers/reportController.js';
+import { submitReport, uploadWork, getUploads, getReportAudit } from '../controllers/reportController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/uploadMiddleware.js';
 
@@ -11,5 +11,6 @@ router.post('/work', protect, upload.single('work'), uploadWork);
 
 // Retrieval endpoints
 router.get('/', protect, getUploads);
+router.get('/audit', protect, getReportAudit);
 
 export default router;

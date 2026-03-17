@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
@@ -29,9 +29,14 @@ const Settings = () => {
     const [newUserTeamId, setNewUserTeamId] = useState('');
     const [teams, setTeams] = useState([]);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+    // Global Reports & Audit State
     const [globalReports, setGlobalReports] = useState([]);
-    const [reportFilter, setReportFilter] = useState('Today'); // 'Today' or 'Work'
+    const [reportFilter, setReportFilter] = useState('Today'); // 'Today', 'Work'
     const [isLoadingReports, setIsLoadingReports] = useState(false);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [auditData, setAuditData] = useState([]);
+    const [expandedMembers, setExpandedMembers] = useState({});
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -62,6 +67,7 @@ const Settings = () => {
         }
     };
 
+
     // Fetch teams when Admin tab is opened
     const handleAdminTabClick = async () => {
         setActiveTab('admin_users');
@@ -70,19 +76,25 @@ const Settings = () => {
         }
     };
 
-    const fetchGlobalReports = async (type = 'Today') => {
+    const fetchGlobalReports = async (type = 'Today', date = selectedDate) => {
         setIsLoadingReports(true);
         setReportFilter(type);
         try {
             let params = {};
             if (type === 'Today') {
                 params.type = 'Report';
-                params.startDate = new Date().toISOString().split('T')[0];
+                params.startDate = date;
+                params.endDate = date + 'T23:59:59';
             } else if (type === 'Work') {
                 params.type = 'Work';
+                params.startDate = date;
+                params.endDate = date + 'T23:59:59';
             }
             const res = await api.get('/reports', { params });
             setGlobalReports(res.data);
+
+            // Also fetch audit data if filtering for reports
+            if (type === 'Today') fetchReportAudit(date);
         } catch (err) {
             toast.error('Failed to fetch global reports');
         } finally {
@@ -90,9 +102,31 @@ const Settings = () => {
         }
     };
 
+    const fetchReportAudit = async (date) => {
+        try {
+            const res = await api.get('/reports/audit', { params: { date } });
+            setAuditData(res.data);
+        } catch (err) {
+            console.error("Audit fetch failed", err);
+        }
+    };
+
     const handleGlobalReportsTabClick = () => {
         setActiveTab('global_reports');
-        fetchGlobalReports('Today');
+        fetchGlobalReports('Today', selectedDate);
+    };
+
+    const handleDateChange = (e) => {
+        const newDate = e.target.value;
+        setSelectedDate(newDate);
+        fetchGlobalReports(reportFilter, newDate);
+    };
+
+    const toggleMemberExpand = (memberName) => {
+        setExpandedMembers(prev => ({
+            ...prev,
+            [memberName]: !prev[memberName]
+        }));
     };
 
     const handleCreateUser = async (e) => {
@@ -313,90 +347,187 @@ const Settings = () => {
                     )}
 
                     {activeTab === 'global_reports' && user?.role === 'Admin' && (
-                        <div className="space-y-6 animate-in fade-in">
-                            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                                <h2 className="text-lg font-semibold text-emerald-900 flex items-center">
-                                    <FileText className="w-5 h-5 mr-2 text-emerald-600" />
-                                    Global Submission Audit
-                                </h2>
-                                <div className="flex space-x-2">
-                                    <button
-                                        onClick={() => fetchGlobalReports('Today')}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${reportFilter === 'Today' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                    >
-                                        Today's Reports
-                                    </button>
-                                    <button
-                                        onClick={() => fetchGlobalReports('Work')}
-                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                                    >
-                                        Work Reports
-                                    </button>
+                        <div className="space-y-6 animate-in fade-in max-w-4xl mx-auto">
+                            {/* Header & Date Configuration */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
+                                <div>
+                                    <h2 className="text-lg font-bold text-emerald-900 flex items-center">
+                                        <FileText className="w-5 h-5 mr-2 text-emerald-600" />
+                                        Submission Audit
+                                    </h2>
+                                    <p className="text-xs text-emerald-600 font-medium mt-0.5">Track daily reports and identify missing updates</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Calendar className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="date"
+                                            value={selectedDate}
+                                            onChange={handleDateChange}
+                                            className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
+                                        />
+                                    </div>
+                                    <div className="flex bg-white/50 p-1 rounded-xl border border-emerald-100 shadow-sm">
+                                        <button
+                                            onClick={() => fetchGlobalReports('Today', selectedDate)}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Today' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                        >
+                                            Reports
+                                        </button>
+                                        <button
+                                            onClick={() => fetchGlobalReports('Work', selectedDate)}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50'}`}
+                                        >
+                                            Work
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
                             {isLoadingReports ? (
-                                <div className="flex justify-center py-20">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100 animate-pulse">
+                                    <div className="relative">
+                                        <div className="w-12 h-12 border-4 border-emerald-100 rounded-full"></div>
+                                        <div className="absolute top-0 w-12 h-12 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+                                    </div>
+                                    <p className="mt-4 text-sm font-bold text-slate-400 uppercase tracking-widest">Analyzing submissions...</p>
                                 </div>
                             ) : (
-                                <div className="space-y-8">
-                                    {Object.entries(
-                                        globalReports.reduce((acc, report) => {
-                                            const name = report.user_name || 'Unassigned';
-                                            if (!acc[name]) acc[name] = [];
-                                            acc[name].push(report);
-                                            return acc;
-                                        }, {})
-                                    ).map(([userName, reports]) => (
-                                        <div key={userName} className="space-y-3">
-                                            <div className="flex items-center space-x-2 border-b border-slate-100 pb-1.5">
-                                                <User className="w-4 h-4 text-slate-400" />
-                                                <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">{userName}</h3>
-                                                <span className="bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-md font-bold">{reports.length}</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {reports.map(upload => (
-                                                    <div key={upload.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:shadow-md transition-all group">
-                                                        <div className="flex items-center">
-                                                            <div className={`p-2.5 rounded-lg mr-4 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                                <FileText className="w-5 h-5" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-sm font-bold text-slate-900">{upload.file_name}</p>
-                                                                <div className="flex items-center mt-0.5 space-x-3 text-[11px] font-bold text-slate-400 tracking-tight uppercase">
-                                                                    <span className="flex items-center text-slate-500">
-                                                                        <Users className="w-3 h-3 mr-1" /> {upload.team_name || 'Individual'}
-                                                                    </span>
-                                                                    <span>•</span>
-                                                                    <span className="flex items-center">
-                                                                        <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center space-x-2">
-                                                            <a
-                                                                href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                title="View/Download"
-                                                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-100"
-                                                            >
-                                                                <Download className="w-5 h-5" />
-                                                            </a>
-                                                        </div>
+                                <div className="space-y-6">
+                                    {/* Submission Audit Summary (Only for Daily Reports) */}
+                                    {reportFilter === 'Today' && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-emerald-200 transition-all">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Submissions Received</p>
+                                                        <p className="text-3xl font-black text-emerald-600 mt-1">{auditData.filter(m => m.has_submitted).length}</p>
                                                     </div>
-                                                ))}
+                                                    <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                                                        <CheckCircle2 className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                                    {auditData.filter(m => m.has_submitted).slice(0, 5).map(m => (
+                                                        <span key={m.id} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100/50">{m.name}</span>
+                                                    ))}
+                                                    {auditData.filter(m => m.has_submitted).length > 5 && (
+                                                        <span className="text-[10px] font-bold text-slate-400 px-2 py-1">+ {auditData.filter(m => m.has_submitted).length - 5} more</span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                    {globalReports.length === 0 && (
-                                        <div className="text-center py-20 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
-                                            <Search className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                                            <p className="text-slate-400 font-medium italic">No {reportFilter === 'Today' ? "reports found for today" : "work reports found"} yet.</p>
+
+                                            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-rose-200 transition-all">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Missing Updates</p>
+                                                        <p className="text-3xl font-black text-rose-500 mt-1">{auditData.filter(m => !m.has_submitted).length}</p>
+                                                    </div>
+                                                    <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
+                                                        <AlertCircle className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                                    {auditData.filter(m => !m.has_submitted).slice(0, 5).map(m => (
+                                                        <span key={m.id} className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded-md border border-rose-100/50">{m.name}</span>
+                                                    ))}
+                                                    {auditData.filter(m => !m.has_submitted).length > 5 && (
+                                                        <span className="text-[10px] font-bold text-slate-400 px-2 py-1">+ {auditData.filter(m => !m.has_submitted).length - 5} more</span>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
+
+                                    {/* Member Reports Accordion */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center px-4 mb-2">
+                                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex-1">Member Reports</h3>
+                                            <span className="text-[10px] font-bold text-slate-400">{Object.keys(globalReports.reduce((acc, r) => { (acc[r.user_name] = acc[r.user_name] || []).push(r); return acc; }, {})).length} Members active</span>
+                                        </div>
+
+                                        {Object.entries(
+                                            globalReports.reduce((acc, report) => {
+                                                const name = report.user_name || 'Unassigned';
+                                                if (!acc[name]) acc[name] = [];
+                                                acc[name].push(report);
+                                                return acc;
+                                            }, {})
+                                        ).map(([userName, reports]) => (
+                                            <div key={userName} className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden ${expandedMembers[userName] ? 'border-primary-blue/30 shadow-lg shadow-primary-blue/5' : 'border-slate-200 shadow-sm'}`}>
+                                                <button
+                                                    onClick={() => toggleMemberExpand(userName)}
+                                                    className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+                                                >
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                                                            {userName.charAt(0)}
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <h4 className="text-sm font-black text-slate-800 tracking-tight uppercase">{userName}</h4>
+                                                            <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-0.5">{reports[0].team_name || 'Individual contribution'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="flex -space-x-2">
+                                                            {reports.slice(0, 3).map((r, i) => (
+                                                                <div key={r.id} className={`w-7 h-7 rounded-lg border-2 border-white flex items-center justify-center text-white ${r.file_type === 'Report' ? 'bg-emerald-500' : 'bg-blue-500'}`} title={r.file_name}>
+                                                                    <FileText className="w-3.5 h-3.5" />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className={`p-1.5 rounded-lg transition-transform duration-300 ${expandedMembers[userName] ? 'rotate-180 bg-primary-blue/10 text-primary-blue' : 'bg-slate-50 text-slate-400'}`}>
+                                                            <ChevronDown className="w-4 h-4" />
+                                                        </div>
+                                                    </div>
+                                                </button>
+
+                                                {expandedMembers[userName] && (
+                                                    <div className="px-4 pb-4 pt-2 space-y-3 animate-in slide-in-from-top-2 duration-300">
+                                                        {reports.map(upload => (
+                                                            <div key={upload.id} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-xl hover:bg-white hover:border-slate-200 transition-all group">
+                                                                <div className="flex items-center min-w-0">
+                                                                    <div className={`p-2.5 rounded-xl mr-4 flex-shrink-0 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                                        <FileText className="w-5 h-5" />
+                                                                    </div>
+                                                                    <div className="truncate">
+                                                                        <p className="text-sm font-black text-slate-900 truncate">{upload.file_name}</p>
+                                                                        <div className="flex items-center mt-0.5 space-x-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                            <span className="flex items-center">
+                                                                                <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                            </span>
+                                                                            <span className="flex items-center bg-slate-100 px-1.5 py-0.5 rounded text-[9px]">
+                                                                                {upload.file_type}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <a
+                                                                    href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
+                                                                    title="View Details"
+                                                                >
+                                                                    <Download className="w-5 h-5" />
+                                                                </a>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+
+                                        {globalReports.length === 0 && (
+                                            <div className="text-center py-20 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                                                <Search className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                                                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No entries found for this date</p>
+                                                <p className="text-[10px] text-slate-400 mt-1">Try selecting a different date or checking the audit summary.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
