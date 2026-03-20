@@ -8,7 +8,8 @@
         "backend"
     ],
     "scripts": {
-        "build": "cd frontend && npm install && npm run build",
+        "build": "npm install && npm run build --prefix frontend",
+        "start": "cd backend && npm start",
         "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
     },
     "dependencies": {
