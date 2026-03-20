@@ -32,7 +32,7 @@ if (fs.existsSync(frontendPath)) {
 
     // The "catch-all" handler: for any request that doesn't
     // match one above, send back React's index.html file.
-    app.get('*', (req, res) => {
+    app.get('(.*)', (req, res) => {
         const indexPath = path.join(frontendPath, 'index.html');
         if (fs.existsSync(indexPath)) {
             res.sendFile(indexPath);
@@ -42,7 +42,7 @@ if (fs.existsSync(frontendPath)) {
     });
 } else {
     console.log("⚠️ WARNING: frontend/dist NOT FOUND. Unified serving disabled.");
-    app.get('*', (req, res) => {
+    app.get('(.*)', (req, res) => {
         res.status(200).json({ message: 'Backend is running. Unified Frontend NOT FOUND. Check build logs.' });
     });
 }
