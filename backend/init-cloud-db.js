@@ -8,10 +8,11 @@ dotenv.config();
 const { Pool } = pg;
 
 // Use your Railway URL from .env
-const connectionString = process.env.DATABASE_URL; // Corrected to use DATABASE_URL from .env
+// Prioritize Render URL if available, fallback to DATABASE_URL
+const connectionString = process.env.NEW_DATABASE_URL || process.env.DATABASE_URL;
 
-if (!connectionString || connectionString.trim() === '' || connectionString.includes('localhost')) {
-    console.error("❌ Error: Please paste your Railway DATABASE_URL in the backend/.env file first!");
+if (!connectionString || connectionString.trim() === '' || (connectionString.includes('localhost') && !process.env.NEW_DATABASE_URL)) {
+    console.error("❌ Error: Please set NEW_DATABASE_URL (for Render) or DATABASE_URL in your .env file!");
     process.exit(1);
 }
 
@@ -29,7 +30,8 @@ const pool = new Pool({
 
 const runMigration = async () => {
     try {
-        console.log("🚀 Connecting to Railway Cloud Database...");
+        console.log(`🚀 Connecting to: ${connectionString.split('@')[1]} (Render)`);
+        console.log("🛠️ Starting Unified Database Initialization...");
 
         // Find the database.sql file in the same directory
         const sqlPath = path.join(process.cwd(), 'database.sql');
@@ -121,8 +123,8 @@ const runMigration = async () => {
         }
         // ------------------------------
 
-        console.log("✅ SUCCESS! Your Railway database is now 100% compatible and populated.");
-        console.log("🚀 You can now proceed to deploy on Vercel.");
+        console.log("✅ SUCCESS! Your Render database is now 100% compatible and populated.");
+        console.log("🚀 You can now proceed to finalize your Render Unified Deployment.");
     } catch (err) {
         console.error("❌ Database Initialization Failed:");
         console.error(err.message);

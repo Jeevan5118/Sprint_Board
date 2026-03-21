@@ -28,7 +28,9 @@ const tables = [
 ];
 
 async function migrate() {
-    console.log("🚀 Starting Full 100% Data Recovery Migration...");
+    console.log("🚀 Starting Data Mirroring (Railway -> Render)...");
+    console.log(`📡 Source: ${OLD_URL.split('@')[1]} (Railway)`);
+    console.log(`🎯 Target: ${NEW_URL.split('@')[1]} (Render)`);
 
     const source = new Client({ connectionString: OLD_URL, ssl: { rejectUnauthorized: false } });
     const target = new Client({ connectionString: NEW_URL, ssl: { rejectUnauthorized: false } });
@@ -40,7 +42,8 @@ async function migrate() {
 
         // Clean target (optional but recommended for fresh migration)
         console.log("🧹 Preparing target database...");
-        await target.query('SET session_replication_role = "replica";'); // Disable triggers/FKs temporarily
+        // Bypassing session_replication_role (not allowed on Render)
+        // Relying on ordered table migration instead.
 
         for (const table of tables) {
             console.log(`📦 Migrating table: ${table}...`);
@@ -70,8 +73,8 @@ async function migrate() {
             console.log(`✅ Migrated ${migratedCount} rows for ${table}.`);
         }
 
-        await target.query('SET session_replication_role = "origin";'); // Re-enable triggers/FKs
-        console.log("\n🎉 SUCCESS! 100% Data Recovery Complete.");
+        // await target.query('SET session_replication_role = "origin";'); // Bypassing for Render
+        console.log("\n🎉 SUCCESS! Data Migration Complete.");
         console.log("🚀 Every task, comment, and file has been moved.");
 
     } catch (err) {

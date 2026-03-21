@@ -5,18 +5,17 @@ dotenv.config();
 
 const { Pool } = pkg;
 
-const isProduction = process.env.NODE_ENV === 'production';
+const connectionString = process.env.DATABASE_URL;
 
-// Log status for Vercel dashboard troubleshooting
-if (isProduction) {
-    console.log('🌐 Vercel Production Environment Detected');
-    console.log('📁 DATABASE_URL Present:', !!process.env.DATABASE_URL);
+if (connectionString) {
+    const maskedUrl = connectionString.split('@')[1] || "Hidden";
+    console.log(`📡 Database Target: ${maskedUrl}`);
 }
 
-const poolConfig = process.env.DATABASE_URL
+const poolConfig = connectionString
     ? {
-        connectionString: process.env.DATABASE_URL,
-        ssl: isProduction ? { rejectUnauthorized: false } : false
+        connectionString,
+        ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false }
     }
     : {
         user: process.env.DB_USER || 'postgres',
