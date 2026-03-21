@@ -15,7 +15,10 @@ if (connectionString) {
 const poolConfig = connectionString
     ? {
         connectionString,
-        ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false }
+        ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
+        connectionTimeoutMillis: 10000,
+        idleTimeoutMillis: 30000,
+        max: 10
     }
     : {
         user: process.env.DB_USER || 'postgres',
