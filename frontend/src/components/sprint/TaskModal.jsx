@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { X, User, Flag, Tag, Calendar, Hash, FolderOpen } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TYPES = ['Task', 'Bug', 'Feature', 'Story'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const STATUSES = ['Backlog', 'To Do', 'In Progress', 'Review', 'Done'];
 
 const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask = null }) => {
+    const { user } = useAuth();
     const [members, setMembers] = useState([]);
     const [projects, setProjects] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,7 +140,11 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                         <div>
                             <label className="label-field">Status</label>
                             <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="input-field">
-                                {STATUSES.map(s => <option key={s}>{s}</option>)}
+                                {STATUSES.map(s => (
+                                    <option key={s} disabled={s === 'Done' && user?.role === 'Member'}>
+                                        {s} {s === 'Done' && user?.role === 'Member' ? '(Review Req.)' : ''}
+                                    </option>
+                                ))}
                             </select>
                         </div>
                     </div>

@@ -132,6 +132,12 @@ const KanbanBoard = () => {
             return;
         }
 
+        // Restriction: Only Admin/Team Lead can move to 'Done'
+        if (destStatus === 'Done' && user?.role === 'Member') {
+            toast.error('Only Admins or Team Leads can mark tasks as Done. Please move to "In Review" first.');
+            return;
+        }
+
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: destStatus } : t));
         try {
             await api.put(`/teams/${teamId}/tasks/${taskId}/status`, { status: destStatus, sort_order: Date.now() });
