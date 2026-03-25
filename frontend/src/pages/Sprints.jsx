@@ -112,9 +112,14 @@ const Sprints = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center text-sm text-slate-500">
-                                        <Calendar className="w-4 h-4 mr-2 text-slate-400" />
-                                        {sprint.start_date ? `${new Date(sprint.start_date).toLocaleDateString()} → ${sprint.end_date ? new Date(sprint.end_date).toLocaleDateString() : 'TBD'}` : 'Unscheduled'}
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center text-sm text-slate-700 font-medium">
+                                            <Calendar className="w-4 h-4 mr-2 text-slate-400" />
+                                            {sprint.start_date ? `${new Date(sprint.start_date).toLocaleDateString()} — ${sprint.end_date ? new Date(sprint.end_date).toLocaleDateString() : 'TBD'}` : 'Unscheduled'}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 uppercase font-black mt-1 ml-6">
+                                            Created {new Date(sprint.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">

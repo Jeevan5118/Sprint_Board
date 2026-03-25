@@ -168,6 +168,16 @@ const SprintBoard = () => {
         }
     };
 
+    const getDaysRemaining = (endDate) => {
+        if (!endDate) return null;
+        const diff = new Date(endDate) - new Date();
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        if (days < 0) return 'Sprint Overdue';
+        if (days === 0) return 'Ends Today';
+        if (days === 1) return 'Ends Tomorrow';
+        return `${days} Days Remaining`;
+    };
+
     if (loading) return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-primary-blue animate-spin"></div></div>;
 
     if (!activeSprint) return (
@@ -184,10 +194,30 @@ const SprintBoard = () => {
 
     return (
         <div className="flex flex-col h-full space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">{activeSprint.name} Board</h1>
-                    <p className="text-sm text-slate-500 mt-1">Ends {new Date(activeSprint.end_date).toLocaleDateString()}</p>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">{activeSprint.name} Board</h1>
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            Live Now
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                            <span className="text-slate-300">DURATION</span>
+                            <span className="text-slate-600">{new Date(activeSprint.start_date).toLocaleDateString([], { month: 'short', day: 'numeric' })} — {new Date(activeSprint.end_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-200"></div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{getDaysRemaining(activeSprint.end_date)}</span>
+                        </div>
+                        <div className="w-px h-3 bg-slate-200"></div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-slate-300">CREATED</span>
+                            <span className="text-slate-500">{new Date(activeSprint.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex space-x-2">
                     {canManage && (
