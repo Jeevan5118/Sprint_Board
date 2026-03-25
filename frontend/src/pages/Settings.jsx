@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
+import { renderAsync } from 'docx-preview';
 
 const Settings = () => {
     const { user, updateUser } = useAuth();
@@ -38,6 +39,8 @@ const Settings = () => {
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
+    const [isDocxLoading, setIsDocxLoading] = useState(false);
+    const docxRef = useRef(null);
 
     const getAbsoluteFileUrl = (url) => {
         if (!url) return '';
@@ -49,6 +52,42 @@ const Settings = () => {
         }
         return url;
     };
+
+    // Effect to handle Word Document Previews
+    useEffect(() => {
+        const renderDocx = async () => {
+            if (previewFile?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && docxRef.current) {
+                setIsDocxLoading(true);
+                try {
+                    // Pre-clear the container
+                    docxRef.current.innerHTML = '';
+                    
+                    const response = await fetch(
+                        `${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`
+                    );
+                    
+                    if (!response.ok) throw new Error('Failed to fetch document');
+                    
+                    const blob = await response.blob();
+                    await renderAsync(blob, docxRef.current, undefined, { 
+                        inWrapper: false,
+                        ignoreWidth: false,
+                        ignoreHeight: false,
+                        debug: false
+                    });
+                } catch (error) {
+                    console.error('Docx Preview Error:', error);
+                    // If rendering fails, we don't clear the container so the fallback below shows
+                } finally {
+                    setIsDocxLoading(false);
+                }
+            }
+        };
+
+        if (previewFile) {
+            renderDocx();
+        }
+    }, [previewFile]);
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -694,6 +733,19 @@ const Settings = () => {
                                     className="w-full h-full border-0 rounded-lg shadow-sm"
                                     title={previewFile.file_name}
                                 ></iframe>
+                            ) : previewFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+                                <div className="w-full h-full relative flex flex-col bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100">
+                                    {isDocxLoading && (
+                                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+                                            <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Processing Document...</p>
+                                        </div>
+                                    )}
+                                    <div 
+                                        ref={docxRef} 
+                                        className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 docx-container"
+                                    ></div>
+                                </div>
                             ) : (
                                 <div className="text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm max-w-sm">
                                     <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
