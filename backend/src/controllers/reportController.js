@@ -123,10 +123,14 @@ export const getUploads = async (req, res, next) => {
         const { rows } = await db.query(query, params);
 
         // Add internal URLs for convenience
-        const uploads = rows.map(u => ({
-            ...u,
-            file_url: `${process.env.BACKEND_URL || ''}/api/v1/files/uploads/${u.id}`
-        }));
+        const uploads = rows.map(u => {
+            const baseUrl = process.env.BACKEND_URL || '';
+            const path = `/api/v1/files/uploads/${u.id}`;
+            return {
+                ...u,
+                file_url: baseUrl.startsWith('http') ? `${baseUrl}${path}` : path
+            };
+        });
 
         res.json(uploads);
     } catch (error) {

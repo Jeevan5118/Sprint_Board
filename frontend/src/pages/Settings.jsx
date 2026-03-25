@@ -39,6 +39,17 @@ const Settings = () => {
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
 
+    const getAbsoluteFileUrl = (url) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        const apiBase = import.meta.env.VITE_API_URL || '';
+        if (apiBase.startsWith('http')) {
+            const root = apiBase.replace(/\/api\/v1$/, '').replace(/\/api$/, '');
+            return `${root}${url}`;
+        }
+        return url;
+    };
+
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
         setIsSavingProfile(true);
@@ -516,7 +527,7 @@ const Settings = () => {
                                                                         <Eye className="w-5 h-5" />
                                                                     </button>
                                                                     <a
-                                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                        href={`${getAbsoluteFileUrl(upload.file_url)}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
@@ -618,7 +629,7 @@ const Settings = () => {
                                                         <Eye className="w-5 h-5" />
                                                     </button>
                                                     <a
-                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                        href={`${getAbsoluteFileUrl(upload.file_url)}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
@@ -661,7 +672,7 @@ const Settings = () => {
                             </div>
                             <div className="flex items-center gap-2">
                                 <a 
-                                    href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                    href={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                     className="p-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100"
                                     title="Download File"
                                 >
@@ -680,13 +691,13 @@ const Settings = () => {
                         <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-4">
                             {previewFile.mimetype.startsWith('image/') ? (
                                 <img 
-                                    src={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`} 
+                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`} 
                                     alt={previewFile.file_name}
                                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                                 />
                             ) : previewFile.mimetype === 'application/pdf' ? (
                                 <iframe 
-                                    src={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
                                     className="w-full h-full border-0 rounded-lg shadow-sm"
                                     title={previewFile.file_name}
                                 ></iframe>
@@ -698,7 +709,7 @@ const Settings = () => {
                                     <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">Preview Unavailable</h4>
                                     <p className="text-sm text-slate-500 mt-2 font-medium">This file type ({previewFile.mimetype}) cannot be previewed in-app.</p>
                                     <a 
-                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                        href={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                         className="mt-8 btn-primary w-full flex items-center justify-center"
                                     >
                                         <Download className="w-4 h-4 mr-2" /> Download to View
