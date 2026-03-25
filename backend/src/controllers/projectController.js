@@ -2,7 +2,7 @@ import db from '../config/db.js';
 
 export const getAllProjects = async (req, res, next) => {
     try {
-        const userId = req.user.id;
+        const isMember = req.user.role === 'Member';
         const isAdmin = req.user.role === 'Admin';
 
         let query = `
@@ -11,13 +11,15 @@ export const getAllProjects = async (req, res, next) => {
                 COUNT(DISTINCT CASE WHEN tk.status = 'Done' THEN tk.id END) AS completed_count
             FROM projects p
             JOIN teams t ON p.team_id = t.id
-            LEFT JOIN tasks tk ON tk.project_id = p.id
+            LEFT JOIN tasks tk ON 
+                (tk.project_id = p.id 
+                ${isMember ? 'AND tk.assignee_id = $1' : ''})
         `;
         let params = [];
+        if (!isAdmin) params.push(userId);
 
         if (!isAdmin) {
             query += ' WHERE p.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)';
-            params.push(userId);
         }
 
         query += ' GROUP BY p.id, t.name ORDER BY t.name, p.name';

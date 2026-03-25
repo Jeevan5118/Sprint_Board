@@ -63,7 +63,9 @@ export const getDashboardAnalytics = async (req, res, next) => {
              FROM comments c 
              JOIN users u ON c.user_id = u.id 
              JOIN tasks t ON c.task_id = t.id
-             WHERE 1=1 ${isAdmin ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
+             WHERE 1=1 
+             ${isAdmin ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)'}
+             ${isMember ? 'AND t.assignee_id = $1' : ''}
              ORDER BY c.created_at DESC LIMIT 8`,
             isAdmin ? [] : [userId]
         );
