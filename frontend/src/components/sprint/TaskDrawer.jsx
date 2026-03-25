@@ -428,7 +428,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                     </button>
                                 </div>
                                 <div className="space-y-3">
-                                    {timeLogs.map(log => (
+                                    {Array.isArray(timeLogs) && timeLogs.map(log => (
                                         <div key={log.id} className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center shadow-sm">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-[10px] font-black text-slate-400">LOG</div>
@@ -442,7 +442,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                             </div>
                                         </div>
                                     ))}
-                                    {timeLogs.length === 0 && (
+                                    {(!Array.isArray(timeLogs) || timeLogs.length === 0) && (
                                         <p className="text-center text-slate-400 py-10 text-sm font-medium">No time logs recorded.</p>
                                     )}
                                 </div>
@@ -452,7 +452,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                         {activeTab === 'history' && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 <div className="relative pl-6 space-y-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                                    {history.map((item) => (
+                                    {Array.isArray(history) && history.map((item) => (
                                         <div key={item.id} className="relative">
                                             <div className="absolute -left-[14.5px] top-1 w-3 h-3 rounded-full bg-white border-2 border-primary-blue z-10" />
                                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -472,7 +472,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                             </div>
                                         </div>
                                     ))}
-                                    {history.length === 0 && (
+                                    {(!Array.isArray(history) || history.length === 0) && (
                                         <div className="text-center py-20">
                                             <History className="w-10 h-10 text-slate-200 mx-auto mb-3" />
                                             <p className="text-sm text-slate-400">No history records yet.</p>
