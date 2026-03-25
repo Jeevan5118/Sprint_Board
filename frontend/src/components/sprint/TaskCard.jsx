@@ -77,9 +77,16 @@ const TaskCard = ({ task, onClick, onDelete, isOverlay }) => {
 
                 <div className="flex items-center space-x-2">
                     {task.updated_at && (
-                        <span className="text-[9px] text-slate-400 font-medium">
-                            {new Date(task.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                        </span>
+                        <div className="flex flex-col items-end">
+                            <span className="text-[9px] text-slate-400 font-medium">
+                                {new Date(task.updated_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                            {task.last_updated_by_name && (
+                                <span className="text-[8px] text-slate-300 font-bold uppercase truncate max-w-[40px]">
+                                    {task.last_updated_by_name.split(' ')[0]}
+                                </span>
+                            )}
+                        </div>
                     )}
                     {task.story_points > 0 && (
                         <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">

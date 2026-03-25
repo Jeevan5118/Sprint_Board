@@ -250,16 +250,21 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                 <div className="bg-white p-5 rounded-xl border border-slate-200">
                                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                                         <span>Created</span>
-                                        <span>Updated</span>
+                                        <span>Last Activity</span>
                                     </div>
                                     <div className="flex items-center justify-between mt-2 text-sm font-medium text-slate-700">
                                         <div className="flex items-center gap-1.5">
                                             <Clock className="w-3.5 h-3.5 text-slate-300" />
                                             {task.created_at ? new Date(task.created_at).toLocaleString() : 'N/A'}
                                         </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <Edit3 className="w-3.5 h-3.5 text-slate-300" />
-                                            {task.updated_at ? new Date(task.updated_at).toLocaleString() : 'N/A'}
+                                        <div className="flex flex-col items-end">
+                                            <div className="flex items-center gap-1.5">
+                                                <Edit3 className="w-3.5 h-3.5 text-slate-300" />
+                                                {task.updated_at ? new Date(task.updated_at).toLocaleString() : 'N/A'}
+                                            </div>
+                                            {task.last_updated_by_name && (
+                                                <span className="text-[10px] text-slate-400 uppercase font-black mt-0.5">By {task.last_updated_by_name}</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

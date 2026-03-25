@@ -8,10 +8,12 @@ export const getTasks = async (req, res, next) => {
         const { sprint_id, status, assignee_id } = req.query;
 
         let query = `
-            SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar
+            SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
+                   lub.name AS last_updated_by_name
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
+            LEFT JOIN users lub ON t.last_updated_by_id = lub.id
             WHERE t.team_id = $1
         `;
         let params = [teamId];
@@ -47,10 +49,12 @@ export const getKanbanTasks = async (req, res, next) => {
         const { teamId } = req.params;
 
         let query = `
-            SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar
+            SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
+                   lub.name AS last_updated_by_name
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
+            LEFT JOIN users lub ON t.last_updated_by_id = lub.id
             WHERE t.team_id = $1 AND t.sprint_id IS NULL
         `;
         let params = [teamId];
@@ -150,7 +154,7 @@ export const updateTask = async (req, res, next) => {
         const oldTask = oldTaskRows[0];
 
         // Perform update
-        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP';
+        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $' + (Object.keys(updates).filter(k => !['id', 'team_id', 'creator_id', 'created_at'].includes(k)).length + 1);
         let params = [];
         let count = 1;
 
@@ -162,7 +166,7 @@ export const updateTask = async (req, res, next) => {
         }
 
         query += ` WHERE id = $${count} AND team_id = $${count + 1} RETURNING *`;
-        params.push(id, teamId);
+        params.push(req.user.id, id, teamId);
 
         const { rows } = await db.query(query, params);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
@@ -224,9 +228,9 @@ export const updateTaskStatus = async (req, res, next) => {
         }
 
         const { rows } = await db.query(
-            `UPDATE tasks SET status = $1, sort_order = $2, sprint_id = $3, updated_at = CURRENT_TIMESTAMP 
-             WHERE id = $4 AND team_id = $5 RETURNING *`,
-            [status, sort_order, sprint_id || null, id, teamId]
+            `UPDATE tasks SET status = $1, sort_order = $2, sprint_id = $3, updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $4 
+             WHERE id = $5 AND team_id = $6 RETURNING *`,
+            [status, sort_order, sprint_id || null, req.user.id, id, teamId]
         );
 
         // LOG HISTORY
