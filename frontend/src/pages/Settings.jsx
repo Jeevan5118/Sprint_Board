@@ -671,13 +671,6 @@ const Settings = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
-                                <a 
-                                    href={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                                    className="p-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100"
-                                    title="Download File"
-                                >
-                                    <Download className="w-5 h-5" />
-                                </a>
                                 <button 
                                     onClick={() => setPreviewFile(null)}
                                     className="p-2.5 bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"
@@ -707,13 +700,12 @@ const Settings = () => {
                                         <FileText className="w-10 h-10" />
                                     </div>
                                     <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">Preview Unavailable</h4>
-                                    <p className="text-sm text-slate-500 mt-2 font-medium">This file type ({previewFile.mimetype}) cannot be previewed in-app.</p>
-                                    <a 
-                                        href={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                                        className="mt-8 btn-primary w-full flex items-center justify-center"
-                                    >
-                                        <Download className="w-4 h-4 mr-2" /> Download to View
-                                    </a>
+                                    <p className="text-sm text-slate-500 mt-2 font-medium">This file format ({previewFile.mimetype}) cannot be viewed directly in-app.</p>
+                                    <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
+                                            Please use the <span className="text-emerald-600">Download Icon 📥</span> in the report list to view this file.
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
