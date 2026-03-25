@@ -498,15 +498,26 @@ const Settings = () => {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <a
-                                                                    href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
-                                                                    title="View Details"
-                                                                >
-                                                                    <Download className="w-5 h-5" />
-                                                                </a>
+                                                                <div className="flex items-center gap-2">
+                                                                    <a
+                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-primary-blue hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-primary-blue group-hover:-translate-y-0.5"
+                                                                        title="Preview Report"
+                                                                    >
+                                                                        <Eye className="w-5 h-5" />
+                                                                    </a>
+                                                                    <a
+                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
+                                                                        title="Download File"
+                                                                    >
+                                                                        <Download className="w-5 h-5" />
+                                                                    </a>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>

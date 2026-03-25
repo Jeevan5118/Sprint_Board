@@ -6,6 +6,7 @@ import db from '../config/db.js';
 export const serveAttachment = async (req, res, next) => {
     try {
         const { id } = req.params;
+        const { preview } = req.query;
         const { rows } = await db.query('SELECT file_name, file_data, mimetype FROM task_attachments WHERE id = $1', [id]);
 
         if (rows.length === 0) {
@@ -13,8 +14,10 @@ export const serveAttachment = async (req, res, next) => {
         }
 
         const file = rows[0];
+        const disposition = preview === 'true' ? 'inline' : 'attachment';
+        
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${file.file_name}"`);
         res.send(file.file_data);
     } catch (error) {
         next(error);
@@ -27,7 +30,7 @@ export const serveAttachment = async (req, res, next) => {
 export const serveUpload = async (req, res, next) => {
     try {
         const { id } = req.params;
-        // Optional: Add authorization check here to ensure only the owner or an admin can access
+        const { preview } = req.query;
         const { rows } = await db.query('SELECT file_name, file_data, mimetype FROM user_uploads WHERE id = $1', [id]);
 
         if (rows.length === 0) {
@@ -35,8 +38,10 @@ export const serveUpload = async (req, res, next) => {
         }
 
         const file = rows[0];
+        const disposition = preview === 'true' ? 'inline' : 'attachment';
+
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${file.file_name}"`);
         res.send(file.file_data);
     } catch (error) {
         next(error);
