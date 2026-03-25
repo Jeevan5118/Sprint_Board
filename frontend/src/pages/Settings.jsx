@@ -42,6 +42,12 @@ const Settings = () => {
     const [isDocxLoading, setIsDocxLoading] = useState(false);
     const docxRef = useRef(null);
 
+    const isWordDoc = (mimetype) => {
+        return mimetype?.includes('word') || 
+               mimetype?.includes('officedocument.wordprocessingml') ||
+               mimetype?.includes('msword');
+    };
+
     const getAbsoluteFileUrl = (url) => {
         if (!url) return '';
         if (url.startsWith('http')) return url;
@@ -56,14 +62,14 @@ const Settings = () => {
     // Effect to handle Word Document Previews
     useEffect(() => {
         const renderDocx = async () => {
-            if (previewFile?.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && docxRef.current) {
+            if (isWordDoc(previewFile?.mimetype) && docxRef.current) {
                 setIsDocxLoading(true);
                 try {
                     // Pre-clear the container
                     docxRef.current.innerHTML = '';
                     
                     const response = await fetch(
-                        `${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`
+                        `${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`
                     );
                     
                     if (!response.ok) throw new Error('Failed to fetch document');
@@ -559,7 +565,11 @@ const Settings = () => {
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <button
-                                                                        onClick={() => setPreviewFile(upload)}
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            setPreviewFile(upload);
+                                                                        }}
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-primary-blue hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-primary-blue group-hover:-translate-y-0.5"
                                                                         title="Preview Report"
                                                                     >
@@ -661,7 +671,11 @@ const Settings = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={() => setPreviewFile(upload)}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setPreviewFile(upload);
+                                                        }}
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-indigo-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-indigo-200 group-hover:-translate-y-0.5"
                                                         title="Preview My Report"
                                                     >
@@ -723,17 +737,17 @@ const Settings = () => {
                         <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-4">
                             {previewFile.mimetype.startsWith('image/') ? (
                                 <img 
-                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`} 
+                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`} 
                                     alt={previewFile.file_name}
                                     className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
                                 />
                             ) : previewFile.mimetype === 'application/pdf' ? (
                                 <iframe 
-                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`}
                                     className="w-full h-full border-0 rounded-lg shadow-sm"
                                     title={previewFile.file_name}
                                 ></iframe>
-                            ) : previewFile.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ? (
+                            ) : isWordDoc(previewFile.mimetype) ? (
                                 <div className="w-full h-full relative flex flex-col bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100">
                                     {isDocxLoading && (
                                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
