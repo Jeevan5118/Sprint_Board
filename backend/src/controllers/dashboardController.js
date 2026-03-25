@@ -69,7 +69,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
              ORDER BY c.created_at DESC LIMIT 8`,
             isAdmin ? [] : [userId]
         );
-        console.log(`Dashboard activity filtered for ${req.user.role} ${userId}`);
+        console.log(`[VERIFIED_V2] Dashboard activity filtered for ${req.user.role} ${userId}`);
 
         res.json({
             analytics: {
