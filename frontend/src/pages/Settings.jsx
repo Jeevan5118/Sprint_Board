@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
@@ -37,6 +37,7 @@ const Settings = () => {
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
+    const [previewFile, setPreviewFile] = useState(null);
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -507,15 +508,13 @@ const Settings = () => {
                                                                     </div>
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <a
-                                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
+                                                                    <button
+                                                                        onClick={() => setPreviewFile(upload)}
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-primary-blue hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-primary-blue group-hover:-translate-y-0.5"
                                                                         title="Preview Report"
                                                                     >
                                                                         <Eye className="w-5 h-5" />
-                                                                    </a>
+                                                                    </button>
                                                                     <a
                                                                         href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                                         target="_blank"
@@ -611,15 +610,13 @@ const Settings = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <a
-                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <button
+                                                        onClick={() => setPreviewFile(upload)}
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-indigo-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-indigo-200 group-hover:-translate-y-0.5"
                                                         title="Preview My Report"
                                                     >
                                                         <Eye className="w-5 h-5" />
-                                                    </a>
+                                                    </button>
                                                     <a
                                                         href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                         target="_blank"
@@ -645,6 +642,73 @@ const Settings = () => {
                     )}
                 </div>
             </div>
+
+            {/* In-App Preview Modal */}
+            {previewFile && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setPreviewFile(null)}></div>
+                    <div className="relative bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white shrink-0">
+                            <div className="flex items-center space-x-3">
+                                <div className={`p-2 rounded-lg ${previewFile.file_type === 'Report' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                    <FileText className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">{previewFile.file_name}</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{previewFile.mimetype} • {previewFile.user_name || user?.name}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <a 
+                                    href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                    className="p-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-100"
+                                    title="Download File"
+                                >
+                                    <Download className="w-5 h-5" />
+                                </a>
+                                <button 
+                                    onClick={() => setPreviewFile(null)}
+                                    className="p-2.5 bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content Container */}
+                        <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-4">
+                            {previewFile.mimetype.startsWith('image/') ? (
+                                <img 
+                                    src={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`} 
+                                    alt={previewFile.file_name}
+                                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                                />
+                            ) : previewFile.mimetype === 'application/pdf' ? (
+                                <iframe 
+                                    src={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                    className="w-full h-full border-0 rounded-lg shadow-sm"
+                                    title={previewFile.file_name}
+                                ></iframe>
+                            ) : (
+                                <div className="text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm max-w-sm">
+                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
+                                        <FileText className="w-10 h-10" />
+                                    </div>
+                                    <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">Preview Unavailable</h4>
+                                    <p className="text-sm text-slate-500 mt-2 font-medium">This file type ({previewFile.mimetype}) cannot be previewed in-app.</p>
+                                    <a 
+                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${previewFile.file_url}${previewFile.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                        className="mt-8 btn-primary w-full flex items-center justify-center"
+                                    >
+                                        <Download className="w-4 h-4 mr-2" /> Download to View
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
