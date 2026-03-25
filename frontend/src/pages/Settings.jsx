@@ -196,12 +196,14 @@ const Settings = () => {
                                 <FileText className="w-4 h-4 mr-3" /> Global Reports
                             </button>
                         )}
-                        <button
-                            onClick={() => setActiveTab('my_submissions')}
-                            className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'my_submissions' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
-                        >
-                            <ArrowUpRight className="w-4 h-4 mr-3" /> My Submissions
-                        </button>
+                        {user?.role !== 'Admin' && (
+                            <button
+                                onClick={() => setActiveTab('my_submissions')}
+                                className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'my_submissions' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
+                            >
+                                <ArrowUpRight className="w-4 h-4 mr-3" /> My Submissions
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -506,7 +508,7 @@ const Settings = () => {
                                                                 </div>
                                                                 <div className="flex items-center gap-2">
                                                                     <a
-                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-primary-blue hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-primary-blue group-hover:-translate-y-0.5"
@@ -515,7 +517,7 @@ const Settings = () => {
                                                                         <Eye className="w-5 h-5" />
                                                                     </a>
                                                                     <a
-                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
@@ -610,7 +612,7 @@ const Settings = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <a
-                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
+                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-indigo-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-indigo-200 group-hover:-translate-y-0.5"
@@ -619,7 +621,7 @@ const Settings = () => {
                                                         <Eye className="w-5 h-5" />
                                                     </a>
                                                     <a
-                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                        href={`${(import.meta.env.VITE_API_URL || '').replace(/\/api$/, '')}${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
