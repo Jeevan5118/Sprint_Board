@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTasks, getKanbanTasks, createTask, updateTask, updateTaskStatus, deleteTask } from '../controllers/taskController.js';
+import { getTasks, getKanbanTasks, createTask, updateTask, updateTaskStatus, deleteTask, getTaskHistory } from '../controllers/taskController.js';
 import { addComment, getComments } from '../controllers/commentController.js';
 import { addTimeLog, getTimeLogs } from '../controllers/timeLogController.js';
 import { toggleAttachment, getAttachments } from '../controllers/uploadController.js';
@@ -15,7 +15,8 @@ router.use(protect);
 router.use(requireTeamMember);
 
 router.get('/', getTasks);
-router.get('/kanban', getKanbanTasks); // Requires /teams/:teamId/tasks/kanban
+router.get('/kanban', getKanbanTasks);
+router.get('/:id/history', getTaskHistory);
 router.post('/', requireRole(['Admin', 'Team Lead']), createTask);
 
 router.put('/:id', updateTask);

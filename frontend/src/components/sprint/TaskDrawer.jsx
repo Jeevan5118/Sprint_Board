@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, Paperclip, Link as LinkIcon, MessageSquare, Plus, Trash2, Tag, Flag, Hash, User, FolderOpen, Loader2, Edit3 } from 'lucide-react';
+import { X, Clock, Paperclip, Link as LinkIcon, MessageSquare, Plus, Trash2, Tag, Flag, Hash, User, FolderOpen, Loader2, Edit3, History } from 'lucide-react';
 import api from '../../api/axios';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useParams } from 'react-router-dom';
 const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const { teamId: paramTeamId } = useParams();
     const teamId = task?.team_id || paramTeamId;
-    
+
     const [activeTab, setActiveTab] = useState('details');
     const [timeLogs, setTimeLogs] = useState([]);
     const [attachments, setAttachments] = useState([]);
@@ -18,6 +18,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const [newComment, setNewComment] = useState('');
     const [newLinkTitle, setNewLinkTitle] = useState('');
     const [newLinkUrl, setNewLinkUrl] = useState('');
+    const [history, setHistory] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -48,6 +49,9 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                 } else if (activeTab === 'links') {
                     const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/links`);
                     setLinks(data || []);
+                } else if (activeTab === 'history') {
+                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/history`);
+                    setHistory(data || []);
                 }
             } catch (err) {
                 console.error("Failed to fetch task sub-data:", err);
@@ -138,14 +142,14 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                     <span className="text-xs font-bold text-slate-500 bg-slate-200 px-2.5 py-1 rounded-lg">TASK-{task.id}</span>
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider
                         ${task.priority === 'Urgent' ? 'bg-rose-100 text-rose-700' :
-                          task.priority === 'High' ? 'bg-amber-100 text-amber-700' :
-                          'bg-primary-blue/10 text-primary-blue'}`}>
+                            task.priority === 'High' ? 'bg-amber-100 text-amber-700' :
+                                'bg-primary-blue/10 text-primary-blue'}`}>
                         {task.priority || 'Medium'}
                     </span>
                 </div>
                 <div className="flex items-center space-x-2">
                     {onEdit && (
-                        <button 
+                        <button
                             onClick={() => onEdit(task)}
                             className="text-slate-400 hover:text-primary-blue hover:bg-primary-blue/5 p-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-bold"
                         >
@@ -168,11 +172,12 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                         { id: 'attachments', label: 'Files', icon: Paperclip },
                         { id: 'links', label: 'Links', icon: LinkIcon },
                         { id: 'comments', label: 'Comments', icon: MessageSquare },
-                        { id: 'time', label: 'Time Tracking', icon: Clock }
+                        { id: 'time', label: 'Time Tracking', icon: Clock },
+                        { id: 'history', label: 'History', icon: History }
                     ].map(tab => (
-                        <button 
+                        <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)} 
+                            onClick={() => setActiveTab(tab.id)}
                             className={`pb-3 font-semibold flex items-center gap-2 transition-colors whitespace-nowrap
                                 ${activeTab === tab.id ? 'border-b-2 border-primary-blue text-primary-blue' : 'text-slate-400 hover:text-slate-600'}`}
                         >
@@ -196,9 +201,9 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <div>
                                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Description</label>
-                                    <p className="text-sm text-slate-600 bg-white p-4 rounded-xl border border-slate-200 leading-relaxed min-h-[100px]">
+                                    <div className="text-sm text-slate-600 bg-white p-4 rounded-xl border border-slate-200 leading-relaxed min-h-[100px]">
                                         {task.description || 'No description provided.'}
-                                    </p>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6 bg-white p-5 rounded-xl border border-slate-200">
@@ -234,10 +239,27 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
                                             <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold border
                                                 ${task.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                  task.status === 'In Progress' ? 'bg-sky-50 text-sky-700 border-sky-100' :
-                                                  'bg-slate-50 text-slate-700 border-slate-100'}`}>
+                                                    task.status === 'In Progress' ? 'bg-sky-50 text-sky-700 border-sky-100' :
+                                                        'bg-slate-50 text-slate-700 border-slate-100'}`}>
                                                 {task.status}
                                             </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-5 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                                        <span>Created</span>
+                                        <span>Updated</span>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2 text-sm font-medium text-slate-700">
+                                        <div className="flex items-center gap-1.5">
+                                            <Clock className="w-3.5 h-3.5 text-slate-300" />
+                                            {task.created_at ? new Date(task.created_at).toLocaleString() : 'N/A'}
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <Edit3 className="w-3.5 h-3.5 text-slate-300" />
+                                            {task.updated_at ? new Date(task.updated_at).toLocaleString() : 'N/A'}
                                         </div>
                                     </div>
                                 </div>
@@ -371,7 +393,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                         <p className="text-center text-slate-400 py-10 text-sm">No comments yet. Start a discussion!</p>
                                     )}
                                 </div>
-                                
+
                                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                                     <div className="relative">
                                         <textarea
@@ -380,7 +402,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                             value={newComment}
                                             onChange={(e) => setNewComment(e.target.value)}
                                         />
-                                        <button 
+                                        <button
                                             onClick={handlePostComment}
                                             disabled={!newComment.trim()}
                                             className="absolute right-3 bottom-3 btn-primary py-1.5 px-4 text-xs disabled:opacity-50"
@@ -417,6 +439,40 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                     ))}
                                     {timeLogs.length === 0 && (
                                         <p className="text-center text-slate-400 py-10 text-sm font-medium">No time logs recorded.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'history' && (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                                <div className="relative pl-6 space-y-8 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                                    {history.map((item) => (
+                                        <div key={item.id} className="relative">
+                                            <div className="absolute -left-[14.5px] top-1 w-3 h-3 rounded-full bg-white border-2 border-primary-blue z-10" />
+                                            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 border border-white uppercase">
+                                                        {(item.user_name || 'U').charAt(0)}
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-900">{item.user_name}</span>
+                                                    <span className="text-[10px] text-slate-400 ml-auto uppercase font-black">{new Date(item.created_at).toLocaleString()}</span>
+                                                </div>
+                                                <p className="text-sm text-slate-600">
+                                                    Updated <span className="font-bold text-slate-800 uppercase text-[10px] bg-slate-100 px-1.5 py-0.5 rounded-md">{item.field_changed}</span> from
+                                                    <span className="mx-1 text-rose-500 font-medium">"{item.old_value || 'None'}"</span>
+                                                    to
+                                                    <span className="mx-1 text-emerald-600 font-bold">"{item.new_value}"</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {history.length === 0 && (
+                                        <div className="text-center py-20">
+                                            <History className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                                            <p className="text-sm text-slate-400">No history records yet.</p>
+                                            <p className="text-[11px] text-slate-300 uppercase font-bold mt-1">Updates will appear here as they happen</p>
+                                        </div>
                                     )}
                                 </div>
                             </div>

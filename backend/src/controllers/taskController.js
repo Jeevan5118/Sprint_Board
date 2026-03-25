@@ -1,5 +1,6 @@
 import db from '../config/db.js';
 import { createNotification } from '../services/notificationService.js';
+import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
 export const getTasks = async (req, res, next) => {
     try {
@@ -143,21 +144,18 @@ export const updateTask = async (req, res, next) => {
         const { id, teamId } = req.params;
         const updates = req.body;
 
-        // Remove fields that shouldn't be updated generically
-        delete updates.id;
-        delete updates.team_id;
-        delete updates.creator_id;
-        delete updates.created_at;
+        // Fetch old state for history
+        const { rows: oldTaskRows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
+        if (oldTaskRows.length === 0) return res.status(404).json({ message: 'Task not found' });
+        const oldTask = oldTaskRows[0];
 
-        if (Object.keys(updates).length === 0) {
-            return res.status(400).json({ message: 'No fields provided for update' });
-        }
-
+        // Perform update
         let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP';
         let params = [];
         let count = 1;
 
         for (const [key, value] of Object.entries(updates)) {
+            if (['id', 'team_id', 'creator_id', 'created_at'].includes(key)) continue;
             query += `, ${key} = $${count}`;
             params.push(value);
             count++;
@@ -168,6 +166,9 @@ export const updateTask = async (req, res, next) => {
 
         const { rows } = await db.query(query, params);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
+
+        // LOG HISTORY
+        await logTaskChanges(id, req.user.id, oldTask, updates);
 
         // Logic 14: Notify user of the assignment specifically if the assignee ID was changed
         if (updates.assignee_id && updates.assignee_id !== req.user.id) {
@@ -228,6 +229,14 @@ export const updateTaskStatus = async (req, res, next) => {
             [status, sort_order, sprint_id || null, id, teamId]
         );
 
+        // LOG HISTORY
+        if (currentTask.status !== status) {
+            await logTaskHistory(id, req.user.id, 'status', currentTask.status, status);
+        }
+        if (currentTask.sprint_id !== (sprint_id || null)) {
+            await logTaskHistory(id, req.user.id, 'sprint', currentTask.sprint_id, sprint_id || 'Backlog');
+        }
+
         await db.query('COMMIT');
         res.json(rows[0]);
     } catch (error) {
@@ -244,5 +253,20 @@ export const deleteTask = async (req, res, next) => {
         const { rows } = await db.query('DELETE FROM tasks WHERE id = $1 AND team_id = $2 RETURNING *', [id, teamId]);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
         res.json({ message: 'Task deleted successfully', task: rows[0] });
+    } catch (error) { next(error); }
+};
+
+export const getTaskHistory = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const query = `
+            SELECT th.*, u.name as user_name, u.avatar_url as user_avatar
+            FROM task_history th
+            JOIN users u ON th.user_id = u.id
+            WHERE th.task_id = $1
+            ORDER BY th.created_at DESC
+        `;
+        const { rows } = await db.query(query, [id]);
+        res.json(rows);
     } catch (error) { next(error); }
 };
