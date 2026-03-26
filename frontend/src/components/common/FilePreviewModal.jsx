@@ -29,6 +29,8 @@ const FilePreviewModal = ({ file, onClose }) => {
 
     const fileUrl = `${getAbsoluteFileUrl(file.file_url)}${file.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`;
 
+    const [textContent, setTextContent] = useState('');
+
     useEffect(() => {
         const renderDoc = async () => {
             if (isWordDoc(file.mimetype) && docxRef.current) {
@@ -41,6 +43,17 @@ const FilePreviewModal = ({ file, onClose }) => {
                     await renderAsync(blob, docxRef.current, undefined, { inWrapper: false });
                 } catch (error) {
                     console.error('Preview Error:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            } else if (isTextFile(file.mimetype)) {
+                setIsLoading(true);
+                try {
+                    const response = await fetch(fileUrl);
+                    const text = await response.text();
+                    setTextContent(text);
+                } catch (error) {
+                    console.error('Text Preview Error:', error);
                 } finally {
                     setIsLoading(false);
                 }
@@ -92,6 +105,12 @@ const FilePreviewModal = ({ file, onClose }) => {
                                 </div>
                             )}
                             <div ref={docxRef} className="h-full overflow-y-auto p-8 docx-preview-container bg-slate-50"></div>
+                        </div>
+                    ) : isTextFile(file.mimetype) ? (
+                        <div className="w-full h-full bg-white p-6 md:p-10 overflow-auto">
+                            <pre className="text-sm font-mono text-slate-600 leading-relaxed whitespace-pre-wrap">
+                                {textContent}
+                            </pre>
                         </div>
                     ) : (
                         <div className="text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm max-w-sm">
