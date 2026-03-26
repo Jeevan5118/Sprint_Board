@@ -14,10 +14,14 @@ export const serveAttachment = async (req, res, next) => {
         }
 
         const file = rows[0];
-        const disposition = preview === 'true' ? 'inline' : 'attachment';
+        const isInline = preview === 'true';
         
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `${disposition}; filename="${file.file_name}"`);
+        if (isInline) {
+            res.setHeader('Content-Disposition', 'inline');
+        } else {
+            res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+        }
         res.send(file.file_data);
     } catch (error) {
         next(error);
@@ -38,10 +42,14 @@ export const serveUpload = async (req, res, next) => {
         }
 
         const file = rows[0];
-        const disposition = preview === 'true' ? 'inline' : 'attachment';
+        const isInline = preview === 'true';
 
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `${disposition}; filename="${file.file_name}"`);
+        if (isInline) {
+            res.setHeader('Content-Disposition', 'inline');
+        } else {
+            res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+        }
         res.send(file.file_data);
     } catch (error) {
         next(error);
