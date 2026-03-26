@@ -45,7 +45,7 @@ const DroppableColumn = ({ id, tasks, limits, onTaskClick, onDeleteTask }) => {
 
 const COLUMNS = ['Backlog', 'To Do', 'In Progress', 'Review', 'Done'];
 
-const KanbanBoard = () => {
+const KanbanBoard = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
@@ -71,7 +71,7 @@ const KanbanBoard = () => {
     useEffect(() => {
         const fetchBoard = async () => {
             try {
-                const { data } = await api.get(`/teams/${teamId}/tasks/kanban`);
+                const { data } = await api.get(`/teams/${teamId}/tasks/kanban?is_power_hour=${isPowerHour}`);
                 setTasks(data.tasks);
                 const limMap = {};
                 data.limits.forEach(l => limMap[l.status_name] = l.wip_limit);
@@ -165,8 +165,8 @@ const KanbanBoard = () => {
         <div className="flex flex-col h-full space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Kanban Board</h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage backlog tasks outside of active sprints.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Kanban' : 'Kanban Board'}</h1>
+                    <p className="text-sm text-slate-500 mt-1">{isPowerHour ? 'Manage backlog tasks outside of power hour sprints.' : 'Manage backlog tasks outside of active sprints.'}</p>
                 </div>
                 {canManage && (
                     <button onClick={() => { setEditingTask(null); setShowTaskModal(true); }} className="btn-primary">+ Create Task</button>
@@ -206,6 +206,7 @@ const KanbanBoard = () => {
                 teamId={teamId}
                 sprintId={null}
                 editTask={editingTask}
+                isPowerHour={isPowerHour}
             />
         </div>
     );

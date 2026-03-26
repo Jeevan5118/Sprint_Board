@@ -4,7 +4,8 @@ import { notifyAdmins, notifyTeam } from '../services/notificationService.js';
 export const getSprintsByTeam = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { rows } = await db.query('SELECT * FROM sprints WHERE team_id = $1 ORDER BY created_at DESC', [teamId]);
+        const isPowerHour = req.query.is_power_hour === 'true';
+        const { rows } = await db.query('SELECT * FROM sprints WHERE team_id = $1 AND is_power_hour = $2 ORDER BY created_at DESC', [teamId, isPowerHour]);
         res.json(rows);
     } catch (error) {
         next(error);
@@ -14,12 +15,12 @@ export const getSprintsByTeam = async (req, res, next) => {
 export const createSprint = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { name, start_date, end_date } = req.body;
+        const { name, start_date, end_date, is_power_hour } = req.body;
         if (!name) return res.status(400).json({ message: 'Sprint name is required' });
 
         const newSprint = await db.query(
-            'INSERT INTO sprints (name, team_id, start_date, end_date) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, teamId, start_date, end_date]
+            'INSERT INTO sprints (name, team_id, start_date, end_date, is_power_hour) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, teamId, start_date, end_date, Boolean(is_power_hour)]
         );
 
         res.status(201).json(newSprint.rows[0]);
@@ -31,11 +32,12 @@ export const createSprint = async (req, res, next) => {
 export const startSprint = async (req, res, next) => {
     try {
         const { id, teamId } = req.params;
+        const isPowerHour = req.query.is_power_hour === 'true';
 
-        // Cannot have two active sprints
+        // Cannot have two active sprints within the same scope
         const activeCheck = await db.query(
-            "SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active'",
-            [teamId]
+            "SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' AND is_power_hour = $2",
+            [teamId, isPowerHour]
         );
 
         if (activeCheck.rows.length > 0) {

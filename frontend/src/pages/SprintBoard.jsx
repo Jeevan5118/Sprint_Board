@@ -45,7 +45,7 @@ const DroppableColumn = ({ id, tasks, onTaskClick, onDeleteTask }) => {
     );
 };
 
-const SprintBoard = () => {
+const SprintBoard = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
@@ -70,11 +70,11 @@ const SprintBoard = () => {
 
     const fetchSprintData = async () => {
         try {
-            const sprintRes = await api.get(`/teams/${teamId}/sprints`);
+            const sprintRes = await api.get(`/teams/${teamId}/sprints?is_power_hour=${isPowerHour}`);
             const active = sprintRes.data.find(s => s.status === 'Active');
             if (active) {
                 setActiveSprint(active);
-                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}`);
+                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}&is_power_hour=${isPowerHour}`);
                 setTasks(taskRes.data);
             }
         } catch {
@@ -268,6 +268,7 @@ const SprintBoard = () => {
                 teamId={teamId}
                 sprintId={activeSprint?.id}
                 editTask={editingTask}
+                isPowerHour={isPowerHour}
             />
         </div>
     );

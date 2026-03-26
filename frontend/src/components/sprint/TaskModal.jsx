@@ -7,7 +7,7 @@ const TYPES = ['Task', 'Bug', 'Feature', 'Story'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const STATUSES = ['Backlog', 'To Do', 'In Progress', 'Review', 'Done'];
 
-const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask = null }) => {
+const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask = null, isPowerHour = false }) => {
     const { user } = useAuth();
     const [members, setMembers] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -62,7 +62,8 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                 story_points: form.story_points ? parseInt(form.story_points) : 0,
                 sprint_id: sprintId || null,
                 assignee_id: form.assignee_id || null,
-                project_id: form.project_id || null
+                project_id: form.project_id || null,
+                is_power_hour: isPowerHour
             };
             let resp;
             if (editTask) {

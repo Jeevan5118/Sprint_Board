@@ -48,7 +48,8 @@ export const createUser = async (req, res, next) => {
 export const importData = async (req, res, next) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-        const { import_type = 'tasks' } = req.body;
+        const { import_type = 'tasks', is_power_hour } = req.body;
+        const isPowerHourBool = is_power_hour === 'true';
 
         let records = [];
         const fileExt = req.file.originalname.split('.').pop().toLowerCase();
@@ -219,27 +220,27 @@ export const importData = async (req, res, next) => {
 
                         let projectId = null;
                         if (project && teamId) {
-                            const pc = await client.query('SELECT id FROM projects WHERE name = $1 AND team_id = $2', [project, teamId]);
+                            const pc = await client.query('SELECT id FROM projects WHERE name = $1 AND team_id = $2 AND is_power_hour = $3', [project, teamId, isPowerHourBool]);
                             if (pc.rows.length === 0) {
-                                const np = await client.query('INSERT INTO projects (name, team_id) VALUES ($1, $2) RETURNING id', [project, teamId]);
+                                const np = await client.query('INSERT INTO projects (name, team_id, is_power_hour) VALUES ($1, $2, $3) RETURNING id', [project, teamId, isPowerHourBool]);
                                 projectId = np.rows[0].id;
                             } else projectId = pc.rows[0].id;
                         }
 
                         let sprintId = null;
                         if (sprint && teamId) {
-                            const sc = await client.query('SELECT id FROM sprints WHERE name = $1 AND team_id = $2', [sprint, teamId]);
+                            const sc = await client.query('SELECT id FROM sprints WHERE name = $1 AND team_id = $2 AND is_power_hour = $3', [sprint, teamId, isPowerHourBool]);
                             if (sc.rows.length === 0) {
-                                const ns = await client.query("INSERT INTO sprints (name, team_id, status) VALUES ($1, $2, 'Active') RETURNING id", [sprint, teamId]);
+                                const ns = await client.query("INSERT INTO sprints (name, team_id, status, is_power_hour) VALUES ($1, $2, 'Active', $3) RETURNING id", [sprint, teamId, isPowerHourBool]);
                                 sprintId = ns.rows[0].id;
                             } else sprintId = sc.rows[0].id;
                         } else if (teamId) {
-                            const activeS = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' LIMIT 1", [teamId]);
+                            const activeS = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' AND is_power_hour = $2 LIMIT 1", [teamId, isPowerHourBool]);
                             if (activeS.rows.length > 0) {
                                 sprintId = activeS.rows[0].id;
                             } else {
                                 // AUTO-FIX: Create and Activate a starting sprint so the user sees tasks on the board
-                                const ns = await client.query("INSERT INTO sprints (name, team_id, status) VALUES ($1, $2, 'Active') RETURNING id", ['Sprint 1', teamId]);
+                                const ns = await client.query("INSERT INTO sprints (name, team_id, status, is_power_hour) VALUES ($1, $2, 'Active', $3) RETURNING id", ['Sprint 1', teamId, isPowerHourBool]);
                                 sprintId = ns.rows[0].id;
                                 console.log(`Auto-created active sprint for team ${teamId}`);
                             }
@@ -260,9 +261,9 @@ export const importData = async (req, res, next) => {
                                 } else { finalDueDate = new Date(due_date); }
                             }
 
-                            const { rows } = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2', [teamId, 'To Do']);
-                            await client.query(`INSERT INTO tasks (title, description, priority, status, team_id, sprint_id, project_id, assignee_id, creator_id, sort_order, story_points, due_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-                                [finalTaskTitle, task_description || description || '', fp, 'To Do', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order, parseInt(story_points) || 0, (finalDueDate && !isNaN(finalDueDate.getTime())) ? finalDueDate : null]);
+                            const { rows } = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2 AND is_power_hour = $3', [teamId, 'To Do', isPowerHourBool]);
+                            await client.query(`INSERT INTO tasks (title, description, priority, status, team_id, sprint_id, project_id, assignee_id, creator_id, sort_order, story_points, due_date, is_power_hour) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                                [finalTaskTitle, task_description || description || '', fp, 'To Do', teamId, sprintId, projectId, userId, req.user.id, rows[0].next_order, parseInt(story_points) || 0, (finalDueDate && !isNaN(finalDueDate.getTime())) ? finalDueDate : null, isPowerHourBool]);
                         }
                         summary.created++;
                     } else if (import_type === 'teams') {
@@ -283,8 +284,8 @@ export const importData = async (req, res, next) => {
                         if (tCheck.rows.length === 0) throw new Error(`Team ${team} not found`);
 
                         await client.query(
-                            'INSERT INTO projects (name, description, team_id) VALUES ($1, $2, $3)',
-                            [name, description, tCheck.rows[0].id]
+                            'INSERT INTO projects (name, description, team_id, is_power_hour) VALUES ($1, $2, $3, $4)',
+                            [name, description, tCheck.rows[0].id, isPowerHourBool]
                         );
                         summary.created++;
 
@@ -338,12 +339,12 @@ export const importData = async (req, res, next) => {
                         }
 
                         let targetSprintId = null;
-                        const activeSprintCheck = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' LIMIT 1", [teamId]);
+                        const activeSprintCheck = await client.query("SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' AND is_power_hour = $2 LIMIT 1", [teamId, isPowerHourBool]);
                         if (activeSprintCheck.rows.length > 0) {
                             targetSprintId = activeSprintCheck.rows[0].id;
                         } else {
                             // AUTO-FIX: Create and Activate a starting sprint so the user sees tasks on the board
-                            const ns = await client.query("INSERT INTO sprints (name, team_id, status) VALUES ($1, $2, 'Active') RETURNING id", ['Sprint 1', teamId]);
+                            const ns = await client.query("INSERT INTO sprints (name, team_id, status, is_power_hour) VALUES ($1, $2, 'Active', $3) RETURNING id", ['Sprint 1', teamId, isPowerHourBool]);
                             targetSprintId = ns.rows[0].id;
                             console.log(`Auto-created active sprint for team ${teamId} in default task import`);
                         }
@@ -352,8 +353,8 @@ export const importData = async (req, res, next) => {
                         const normalizedPriority = pMap[finalPriority.toLowerCase()] || 'Medium';
 
                         const { rows } = await client.query(
-                            'SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2',
-                            [teamId, targetSprintId ? 'To Do' : 'Backlog']
+                            'SELECT COALESCE(MAX(sort_order), 0) + 1000 as next_order FROM tasks WHERE team_id = $1 AND status = $2 AND is_power_hour = $3',
+                            [teamId, targetSprintId ? 'To Do' : 'Backlog', isPowerHourBool]
                         );
 
                         let finalDueDate = null;
@@ -372,9 +373,9 @@ export const importData = async (req, res, next) => {
                         }
 
                         await client.query(`
-                        INSERT INTO tasks (title, description, priority, status, story_points, due_date, team_id, sprint_id, assignee_id, creator_id, sort_order)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-                    `, [finalTitle, description || task_description || body || '', normalizedPriority, 'To Do', parseInt(story_points || points) || 0, finalDueDate && !isNaN(finalDueDate.getTime()) ? finalDueDate : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order]);
+                        INSERT INTO tasks (title, description, priority, status, story_points, due_date, team_id, sprint_id, assignee_id, creator_id, sort_order, is_power_hour)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                    `, [finalTitle, description || task_description || body || '', normalizedPriority, 'To Do', parseInt(story_points || points) || 0, finalDueDate && !isNaN(finalDueDate.getTime()) ? finalDueDate : null, teamId, targetSprintId, assigneeId, req.user.id, rows[0].next_order, isPowerHourBool]);
 
                         summary.created++;
                     }

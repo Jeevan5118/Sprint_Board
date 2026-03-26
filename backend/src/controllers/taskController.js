@@ -5,7 +5,8 @@ import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 export const getTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { sprint_id, status, assignee_id } = req.query;
+        const { sprint_id, status, assignee_id, is_power_hour } = req.query;
+        const isPowerHourBool = is_power_hour === 'true';
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -14,10 +15,10 @@ export const getTasks = async (req, res, next) => {
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
-            WHERE t.team_id = $1
+            WHERE t.team_id = $1 AND t.is_power_hour = $2
         `;
-        let params = [teamId];
-        let count = 2;
+        let params = [teamId, isPowerHourBool];
+        let count = 3;
 
         if (sprint_id) {
             query += ` AND t.sprint_id = $${count++}`;
@@ -47,6 +48,7 @@ export const getTasks = async (req, res, next) => {
 export const getKanbanTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
+        const isPowerHourBool = req.query.is_power_hour === 'true';
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -55,12 +57,12 @@ export const getKanbanTasks = async (req, res, next) => {
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
-            WHERE t.team_id = $1 AND t.sprint_id IS NULL
+            WHERE t.team_id = $1 AND t.sprint_id IS NULL AND t.is_power_hour = $2
         `;
-        let params = [teamId];
+        let params = [teamId, isPowerHourBool];
         // Logic 3: Restricted Member visibility for Kanban
         if (req.user.role === 'Member') {
-            query += ` AND t.assignee_id = $2`;
+            query += ` AND t.assignee_id = $3`;
             params.push(req.user.id);
         }
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
@@ -83,17 +85,18 @@ export const createTask = async (req, res, next) => {
         const {
             title, description, type, priority, status,
             story_points, estimated_hours, due_date,
-            project_id, sprint_id, assignee_id
+            project_id, sprint_id, assignee_id, is_power_hour
         } = req.body;
+        const isPowerHourBool = Boolean(is_power_hour);
 
         if (!title) return res.status(400).json({ message: 'Title is required' });
 
-        // Logic 10: Auto-assign Active Sprint if no sprint provided
+        // Logic 10: Auto-assign Active Sprint if no sprint provided, specific to Power Hour context
         let targetSprintId = sprint_id;
         if (!targetSprintId) {
             const activeSprintCheck = await db.query(
-                "SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active'",
-                [teamId]
+                "SELECT id FROM sprints WHERE team_id = $1 AND status = 'Active' AND is_power_hour = $2",
+                [teamId, isPowerHourBool]
             );
             if (activeSprintCheck.rows.length > 0) {
                 targetSprintId = activeSprintCheck.rows[0].id;
@@ -101,11 +104,11 @@ export const createTask = async (req, res, next) => {
         }
 
         // Calculate sort_order (place at the end of the current status/sprint combination)
-        let maxOrderQuery = 'SELECT COALESCE(MAX(sort_order), 0) as max_order FROM tasks WHERE team_id = $1 AND status = $2';
-        let maxOrderParams = [teamId, status || 'Backlog'];
+        let maxOrderQuery = 'SELECT COALESCE(MAX(sort_order), 0) as max_order FROM tasks WHERE team_id = $1 AND status = $2 AND is_power_hour = $3';
+        let maxOrderParams = [teamId, status || 'Backlog', isPowerHourBool];
 
         if (targetSprintId) {
-            maxOrderQuery += ' AND sprint_id = $3';
+            maxOrderQuery += ' AND sprint_id = $4';
             maxOrderParams.push(targetSprintId);
         } else {
             maxOrderQuery += ' AND sprint_id IS NULL';
@@ -118,14 +121,14 @@ export const createTask = async (req, res, next) => {
       INSERT INTO tasks (
         title, description, type, priority, status, 
         story_points, estimated_hours, due_date,
-        team_id, project_id, sprint_id, assignee_id, creator_id, sort_order
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *
+        team_id, project_id, sprint_id, assignee_id, creator_id, sort_order, is_power_hour
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *
     `;
 
         const newTask = await db.query(insertQuery, [
             title, description, type || 'Task', priority || 'Medium', status || 'Backlog',
             story_points || 0, estimated_hours, due_date,
-            teamId, project_id, targetSprintId, assignee_id, req.user.id, newSortOrder
+            teamId, project_id, targetSprintId, assignee_id, req.user.id, newSortOrder, isPowerHourBool
         ]);
 
         // Logic 14: Notification trigger when assigned

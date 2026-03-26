@@ -5,6 +5,7 @@ import { UploadCloud, CheckCircle, AlertTriangle, FileText } from 'lucide-react'
 const AdminImport = () => {
     const [file, setFile] = useState(null);
     const [importType, setImportType] = useState('automate');
+    const [isPowerHour, setIsPowerHour] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [results, setResults] = useState(null);
     const [error, setError] = useState('');
@@ -29,6 +30,7 @@ const AdminImport = () => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('import_type', importType);
+        formData.append('is_power_hour', isPowerHour);
 
         try {
             const { data } = await api.post('/admin/import/csv', formData, {
@@ -101,6 +103,26 @@ const AdminImport = () => {
                                 <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
                                     <p className="text-[11px] text-indigo-700 font-medium uppercase tracking-wider mb-1">PRO TIP</p>
                                     <p className="text-sm text-indigo-900">{importHelp[importType]}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700">Target Workspace Environment</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <label className={`border rounded-lg p-4 flex items-center cursor-pointer transition-colors ${!isPowerHour ? 'bg-primary-blue/5 border-primary-blue shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                                        <input type="radio" name="workspaceTarget" className="w-4 h-4 text-primary-blue mr-3 border-gray-300 focus:ring-primary-blue" checked={!isPowerHour} onChange={() => setIsPowerHour(false)} />
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">Normal Workspace</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">Standard Sprints & Kanbans</p>
+                                        </div>
+                                    </label>
+                                    <label className={`border rounded-lg p-4 flex items-center cursor-pointer transition-colors ${isPowerHour ? 'bg-amber-50 border-amber-500 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                                        <input type="radio" name="workspaceTarget" className="w-4 h-4 text-amber-500 mr-3 border-gray-300 focus:ring-amber-500" checked={isPowerHour} onChange={() => setIsPowerHour(true)} />
+                                        <div>
+                                            <p className="text-sm font-bold text-slate-900">⚡ Power Hour</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">Isolated Power Hour Space</p>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 

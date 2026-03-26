@@ -9,6 +9,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     const navItems = [
         { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Teams', path: '/teams', icon: Users },
+        { name: '⚡ Power Hour', path: '/power-hour-teams', icon: Users },
         { name: 'Projects', path: '/projects', icon: FolderKanban },
         { name: 'Timeline', path: '/timeline', icon: Calendar },
         { name: 'Notifications', path: '/notifications', icon: Bell },

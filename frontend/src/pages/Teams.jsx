@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Plus, Trash2, Users, ChevronRight, LayoutGrid, Zap } from 'lucide-react';
 
-const Teams = () => {
+const Teams = ({ isPowerHour = false }) => {
     const { user } = useAuth();
     const [teams, setTeams] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -60,8 +60,8 @@ const Teams = () => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Teams</h1>
-                    <p className="text-sm text-slate-500 mt-1">Manage organization teams and members.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Teams' : 'Teams'}</h1>
+                    <p className="text-sm text-slate-500 mt-1">{isPowerHour ? 'Manage Power Hour isolated workspaces.' : 'Manage organization teams and members.'}</p>
                 </div>
                 {isAdmin && (
                     <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center">
@@ -118,14 +118,14 @@ const Teams = () => {
 
                         <div className="flex flex-col space-y-2 pt-2 border-t border-slate-100">
                             <div className="flex items-center space-x-2">
-                                <Link to={`/teams/${team.id}/sprint-board`} className="flex-1 btn-primary py-1.5 text-xs text-center flex items-center justify-center">
+                                <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${team.id}/sprint-board`} className={`flex-1 ${isPowerHour ? 'bg-amber-500 hover:bg-amber-600' : 'bg-primary-blue hover:bg-blue-700'} text-white rounded-lg py-1.5 text-xs text-center flex items-center justify-center transition-colors font-semibold`}>
                                     <Zap className="w-3.5 h-3.5 mr-1" /> Sprint Board
                                 </Link>
-                                <Link to={`/teams/${team.id}/kanban`} className="flex-1 btn-secondary py-1.5 text-xs text-center flex items-center justify-center">
+                                <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${team.id}/kanban`} className="flex-1 btn-secondary py-1.5 text-xs text-center flex items-center justify-center">
                                     <LayoutGrid className="w-3.5 h-3.5 mr-1" /> Kanban
                                 </Link>
                             </div>
-                            <Link to={`/teams/${team.id}`} className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-primary-blue transition-colors py-1">
+                            <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${team.id}`} className="w-full text-center text-[11px] font-bold text-slate-400 hover:text-primary-blue transition-colors py-1">
                                 View Team Details & Members
                             </Link>
                         </div>

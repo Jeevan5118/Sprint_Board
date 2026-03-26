@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Play, CheckCircle, Calendar, Plus, LayoutTemplate, X } from 'lucide-react';
 
-const Sprints = () => {
+const Sprints = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
     const { user } = useAuth();
     const [sprints, setSprints] = useState([]);
@@ -20,7 +20,7 @@ const Sprints = () => {
         try {
             const [teamRes, sprintsRes] = await Promise.all([
                 api.get(`/teams/${teamId}`),
-                api.get(`/teams/${teamId}/sprints`)
+                api.get(`/teams/${teamId}/sprints?is_power_hour=${isPowerHour}`)
             ]);
             setTeam(teamRes.data);
             setSprints(sprintsRes.data);
@@ -37,7 +37,7 @@ const Sprints = () => {
         e.preventDefault();
         setIsSubmitting(true);
         try {
-            const { data } = await api.post(`/teams/${teamId}/sprints`, form);
+            const { data } = await api.post(`/teams/${teamId}/sprints`, { ...form, is_power_hour: isPowerHour });
             setSprints(prev => [data, ...prev]);
             setShowModal(false);
             setForm({ name: '', start_date: '', end_date: '' });
@@ -51,7 +51,7 @@ const Sprints = () => {
 
     const handleStartSprint = async (id) => {
         try {
-            const { data } = await api.put(`/teams/${teamId}/sprints/${id}/start`);
+            const { data } = await api.put(`/teams/${teamId}/sprints/${id}/start?is_power_hour=${isPowerHour}`);
             setSprints(prev => prev.map(s => s.id === id ? data : s));
             toast.success('Sprint started!');
         } catch (err) {
@@ -76,7 +76,7 @@ const Sprints = () => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Sprints</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Sprints' : 'Sprints'}</h1>
                     <p className="text-sm text-slate-500 mt-1">Manage timeboxes for {team?.name}</p>
                 </div>
                 {canManage && (
@@ -134,7 +134,7 @@ const Sprints = () => {
                                         </button>
                                     )}
                                     {sprint.status === 'Active' && (
-                                        <Link to={`/teams/${teamId}/sprint-board`} className="btn-secondary py-1 text-xs inline-flex items-center">
+                                        <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${teamId}/sprint-board`} className={`py-1 text-xs inline-flex items-center ${isPowerHour ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-none' : 'btn-secondary'}`}>
                                             <LayoutTemplate className="w-3 h-3 mr-1" /> Board
                                         </Link>
                                     )}

@@ -17,10 +17,16 @@ export const getAllProjects = async (req, res, next) => {
                 ${isMember ? 'AND tk.assignee_id = $1' : ''})
         `;
         let params = [];
-        if (!isAdmin) params.push(userId);
+        const isPowerHour = req.query.is_power_hour === 'true';
 
         if (!isAdmin) {
-            query += ' WHERE p.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)';
+            params.push(userId);
+            query += ` WHERE p.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)`;
+            query += ` AND p.is_power_hour = $2`;
+            params.push(isPowerHour);
+        } else {
+            query += ` WHERE p.is_power_hour = $1`;
+            params.push(isPowerHour);
         }
 
         query += ' GROUP BY p.id, t.name ORDER BY t.name, p.name';
@@ -32,10 +38,12 @@ export const getAllProjects = async (req, res, next) => {
 export const getProjectsByTeam = async (req, res, next) => {
     try {
         const { teamId } = req.params;
+        const isPowerHour = req.query.is_power_hour === 'true';
+
         const { rows } = await db.query(
             `SELECT p.*, COUNT(tk.id) AS tasks_count FROM projects p
-             LEFT JOIN tasks tk ON tk.project_id = p.id WHERE p.team_id = $1 GROUP BY p.id ORDER BY p.name`,
-            [teamId]
+             LEFT JOIN tasks tk ON tk.project_id = p.id WHERE p.team_id = $1 AND p.is_power_hour = $2 GROUP BY p.id ORDER BY p.name`,
+            [teamId, isPowerHour]
         );
         res.json(rows);
     } catch (error) { next(error); }
@@ -53,12 +61,12 @@ export const deleteProject = async (req, res, next) => {
 export const createProject = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { name, description } = req.body;
+        const { name, description, is_power_hour } = req.body;
         if (!name) return res.status(400).json({ message: 'Project name is required' });
 
         const newProject = await db.query(
-            'INSERT INTO projects (name, description, team_id) VALUES ($1, $2, $3) RETURNING *',
-            [name, description, teamId]
+            'INSERT INTO projects (name, description, team_id, is_power_hour) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, description, teamId, Boolean(is_power_hour)]
         );
 
         // Notify Admins and Team

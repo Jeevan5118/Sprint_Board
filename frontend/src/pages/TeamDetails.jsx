@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Users, Folder, Search, UserPlus, Settings, Trash2, ArrowLeft, ChevronUp } from 'lucide-react';
 
-const TeamDetails = () => {
+const TeamDetails = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
     const { user } = useAuth();
     const [team, setTeam] = useState(null);
@@ -22,7 +22,7 @@ const TeamDetails = () => {
             const [teamRes, membersRes, projectsRes] = await Promise.all([
                 api.get(`/teams/${teamId}`),
                 api.get(`/teams/${teamId}/members`),
-                api.get(`/teams/${teamId}/projects`)
+                api.get(`/teams/${teamId}/projects?is_power_hour=${isPowerHour}`)
             ]);
             setTeam(teamRes.data);
             setMembers(membersRes.data);
@@ -94,8 +94,8 @@ const TeamDetails = () => {
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <Link to="/teams" className="text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center mb-4">
-                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to Teams
+                <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}`} className="text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center mb-4">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to {isPowerHour ? 'Power Hour Teams' : 'Teams'}
                 </Link>
                 <div className="flex items-center justify-between">
                     <div>
@@ -103,7 +103,7 @@ const TeamDetails = () => {
                         <p className="text-sm text-slate-500 mt-1">{team.description || 'No description'}</p>
                     </div>
                     <div className="flex space-x-2">
-                        <Link to={`/teams/${teamId}/sprints`} className="btn-secondary flex items-center text-sm">
+                        <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${teamId}/sprints`} className={`flex-1 ${isPowerHour ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-none' : 'btn-secondary'} flex items-center text-sm`}>
                             <Settings className="w-4 h-4 mr-2" /> Manage Sprints
                         </Link>
                     </div>
