@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, FileText, Loader2, Download, ExternalLink } from 'lucide-react';
-import { renderAsync } from 'docx-preview';
 
 const isWordDoc = (mimetype) => {
     return mimetype?.includes('word') ||
@@ -36,6 +35,7 @@ const FilePreviewModal = ({ file, onClose }) => {
             if (isWordDoc(file.mimetype) && docxRef.current) {
                 setIsLoading(true);
                 try {
+                    const { renderAsync } = await import('docx-preview');
                     docxRef.current.innerHTML = '';
                     const response = await fetch(fileUrl);
                     if (!response.ok) throw new Error('Failed to fetch document');
