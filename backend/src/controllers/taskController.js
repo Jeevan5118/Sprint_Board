@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { createNotification } from '../services/notificationService.js';
+import { createNotification, notifyAdmins } from '../services/notificationService.js';
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
 export const getTasks = async (req, res, next) => {
@@ -130,10 +130,12 @@ export const createTask = async (req, res, next) => {
 
         // Logic 14: Notification trigger when assigned
         if (assignee_id && assignee_id !== req.user.id) {
+            const link = targetSprintId ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
             await createNotification(
                 assignee_id,
                 'TaskAssigned',
-                `You were assigned to task: ${title}`
+                `You were assigned to task: ${title}`,
+                link
             );
         }
 
@@ -176,10 +178,12 @@ export const updateTask = async (req, res, next) => {
 
         // Logic 14: Notify user of the assignment specifically if the assignee ID was changed
         if (updates.assignee_id && updates.assignee_id !== req.user.id) {
+            const link = rows[0].sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
             await createNotification(
                 updates.assignee_id,
                 'TaskUpdated',
-                `You were assigned to an existing task: ${rows[0].title}`
+                `You were assigned to an existing task: ${rows[0].title}`,
+                link
             );
         }
 
@@ -239,6 +243,13 @@ export const updateTaskStatus = async (req, res, next) => {
         }
         if (currentTask.sprint_id !== (sprint_id || null)) {
             await logTaskHistory(id, req.user.id, 'sprint', currentTask.sprint_id, sprint_id || 'Backlog');
+        }
+
+        // Feature: Notify Admins on Task Completion
+        if (currentTask.status !== 'Done' && status === 'Done') {
+            const { rows: userRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+            const link = sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
+            await notifyAdmins('Tasks', `Task moved to Done by ${userRow[0]?.name || 'a user'}.`, link);
         }
 
         await db.query('COMMIT');

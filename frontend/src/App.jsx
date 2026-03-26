@@ -17,6 +17,7 @@ import Timeline from './pages/Timeline';
 import Settings from './pages/Settings';
 import AdminImport from './pages/AdminImport';
 import FileViewer from './pages/FileViewer';
+import Notifications from './pages/Notifications';
 import { Toaster } from 'react-hot-toast';
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin/import" element={<AdminImport />} />
+              <Route path="/notifications" element={<Notifications />} />
 
               {/* Catch-all for scaffold */}
               <Route path="*" element={<div className="p-6 text-center text-slate-500 flex flex-col items-center justify-center p-12">Page under construction...</div>} />

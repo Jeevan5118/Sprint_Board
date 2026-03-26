@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { createNotification } from '../services/notificationService.js';
+import { notifyAdmins, notifyTeam } from '../services/notificationService.js';
 
 export const getSprintsByTeam = async (req, res, next) => {
     try {
@@ -47,11 +47,9 @@ export const startSprint = async (req, res, next) => {
             [id]
         );
 
-        // Notify all team members
-        const teamMembers = await db.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
-        for (const member of teamMembers.rows) {
-            await createNotification(member.user_id, 'SprintStarted', `Sprint "${rows[0].name}" has started!`, `/teams/${teamId}/sprint-board`);
-        }
+        // Notify Admins and Team
+        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been started.`, `/teams/${teamId}/sprints`);
+        await notifyTeam(teamId, 'Sprints', `Sprint "${rows[0].name}" has started!`, `/teams/${teamId}/sprint-board`);
 
         res.json(rows[0]);
     } catch (error) {
@@ -68,11 +66,9 @@ export const completeSprint = async (req, res, next) => {
             [id]
         );
 
-        // Notify all team members
-        const teamMembers = await db.query('SELECT user_id FROM team_members WHERE team_id = $1', [rows[0].team_id]);
-        for (const member of teamMembers.rows) {
-            await createNotification(member.user_id, 'SprintCompleted', `Sprint "${rows[0].name}" has been completed.`, `/teams/${rows[0].team_id}/sprints`);
-        }
+        // Notify Admins and Team
+        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been completed.`, `/teams/${rows[0].team_id}/sprints`);
+        await notifyTeam(rows[0].team_id, 'Sprints', `Sprint "${rows[0].name}" has been completed.`, `/teams/${rows[0].team_id}/sprints`);
 
         res.json(rows[0]);
     } catch (error) {

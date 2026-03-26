@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import { notifyAdmins, notifyTeam } from '../services/notificationService.js';
 
 export const getAllProjects = async (req, res, next) => {
     try {
@@ -59,6 +60,10 @@ export const createProject = async (req, res, next) => {
             'INSERT INTO projects (name, description, team_id) VALUES ($1, $2, $3) RETURNING *',
             [name, description, teamId]
         );
+
+        // Notify Admins and Team
+        await notifyAdmins('System', `New project "${name}" created.`, `/projects/${newProject.rows[0].id}`);
+        await notifyTeam(teamId, 'System', `New project "${name}" has been created!`, `/projects/${newProject.rows[0].id}`);
 
         res.status(201).json(newProject.rows[0]);
     } catch (error) {

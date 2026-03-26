@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import { notifyAdmins, notifyTeamLeads } from '../services/notificationService.js';
 
 export const submitReport = async (req, res, next) => {
     try {
@@ -22,6 +23,14 @@ export const submitReport = async (req, res, next) => {
             'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
             [userId, teamId || null, fileName, req.file.buffer, 'Report', req.file.mimetype, JSON.stringify({ summary })]
         );
+
+        // Notify Admins and Team Leads
+        const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
+        const uName = userRows[0]?.name || 'A user';
+        await notifyAdmins('Reports', `${uName} submitted their daily report.`, `/settings`);
+        if (teamId) {
+            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted their daily report.`, `/settings`);
+        }
 
         res.status(200).json({
             message: `Report uploaded successfully to internal storage`,
@@ -50,6 +59,14 @@ export const uploadWork = async (req, res, next) => {
             'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
             [userId, teamId || null, fileName, req.file.buffer, 'Work', req.file.mimetype, JSON.stringify({ description })]
         );
+
+        // Notify Admins and Team Leads
+        const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
+        const uName = userRows[0]?.name || 'A user';
+        await notifyAdmins('Reports', `${uName} submitted work.`, `/settings`);
+        if (teamId) {
+            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted work.`, `/settings`);
+        }
 
         res.status(200).json({
             message: `Work uploaded successfully to internal storage`,

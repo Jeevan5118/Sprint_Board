@@ -2,27 +2,37 @@ import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Bell, Search, Menu, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Navbar = ({ onMenuClick }) => {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
     const [showNotifications, setShowNotifications] = useState(false);
 
     const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
+        let isMounted = true;
         const fetchNotifications = async () => {
             try {
                 if (user) {
                     const { data } = await api.get('/notifications');
-                    setNotifications(data);
+                    if (isMounted) setNotifications(data);
                 }
             } catch (error) {
                 console.error("Error fetching notifications:", error);
             }
         };
+
         fetchNotifications();
-        // Option to add setInterval here for polling every 30-60s in production
+        
+        // Auto-poll every 30 seconds
+        const interval = setInterval(fetchNotifications, 30000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
     }, [user]);
 
     const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -89,7 +99,15 @@ const Navbar = ({ onMenuClick }) => {
                             </div>
                             <div className="max-h-96 overflow-y-auto">
                                 {notifications.length > 0 ? notifications.map(notif => (
-                                    <div key={notif.id} className={`p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors flex items-start gap-3 ${!notif.is_read ? 'bg-blue-50/50' : ''}`}>
+                                    <div 
+                                        key={notif.id} 
+                                        onClick={async () => {
+                                            if (!notif.is_read) await markAsRead(notif.id);
+                                            setShowNotifications(false);
+                                            if (notif.link_url) navigate(notif.link_url);
+                                        }}
+                                        className={`p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors flex items-start gap-3 cursor-pointer ${!notif.is_read ? 'bg-blue-50/50' : ''}`}
+                                    >
                                         <div className="flex-1">
                                             <p className={`text-sm ${!notif.is_read ? 'font-medium text-slate-900' : 'text-slate-600'}`}>
                                                 {notif.message}
@@ -97,7 +115,14 @@ const Navbar = ({ onMenuClick }) => {
                                             <p className="text-xs text-slate-400 mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
                                         </div>
                                         {!notif.is_read && (
-                                            <button onClick={() => markAsRead(notif.id)} className="text-slate-400 hover:text-success-green flex-shrink-0" title="Mark as read">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    markAsRead(notif.id);
+                                                }} 
+                                                className="text-slate-400 hover:text-success-green flex-shrink-0" 
+                                                title="Mark as read"
+                                            >
                                                 <Check className="w-4 h-4" />
                                             </button>
                                         )}
@@ -107,7 +132,7 @@ const Navbar = ({ onMenuClick }) => {
                                 )}
                             </div>
                             <div className="p-3 bg-slate-50 text-center border-t border-slate-100">
-                                <Link to="/timeline" onClick={() => setShowNotifications(false)} className="text-xs font-medium text-slate-500 hover:text-slate-800">View Activity Timeline</Link>
+                                <Link to="/notifications" onClick={() => setShowNotifications(false)} className="text-sm font-medium text-primary-blue hover:text-blue-800">View All Notifications</Link>
                             </div>
                         </div>
                     )}

@@ -3,10 +3,10 @@ import db from '../config/db.js';
 export const getNotifications = async (req, res, next) => {
     try {
         const userId = req.user.id;
-        // Fetch last 50 notifications
+        const limit = parseInt(req.query.limit, 10) || 50;
         const { rows } = await db.query(
-            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
-            [userId]
+            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2',
+            [userId, limit]
         );
         res.status(200).json(rows);
     } catch (error) {

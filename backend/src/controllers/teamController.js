@@ -1,4 +1,5 @@
 import db from '../config/db.js';
+import { notifyAdmins, createNotification } from '../services/notificationService.js';
 
 export const getTeams = async (req, res, next) => {
     try {
@@ -56,6 +57,10 @@ export const createTeam = async (req, res, next) => {
         }
 
         await db.query('COMMIT');
+
+        // Notify Admins about new team
+        await notifyAdmins('System', `New team "${name}" has been created.`, `/teams/${teamId}`);
+
         res.status(201).json(newTeam.rows[0]);
     } catch (error) {
         await db.query('ROLLBACK');
@@ -119,6 +124,15 @@ export const promoteToLead = async (req, res, next) => {
             await db.query("UPDATE users SET role = 'Member' WHERE id = $1", [m.id]);
         }
         await db.query("UPDATE users SET role = 'Team Lead' WHERE id = $1", [userId]);
+
+        // Notify Admins and User
+        const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
+        const { rows: teamRows } = await db.query('SELECT name FROM teams WHERE id = $1', [teamId]);
+        if (userRows.length > 0 && teamRows.length > 0) {
+            await notifyAdmins('System', `${userRows[0].name} was promoted to Team Lead for ${teamRows[0].name}.`, `/teams/${teamId}`);
+            await createNotification(userId, 'System', `You have been promoted to Team Lead for ${teamRows[0].name}.`, `/teams/${teamId}`);
+        }
+
         res.json({ message: 'User promoted to Team Lead' });
     } catch (error) { next(error); }
 };
