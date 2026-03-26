@@ -1,6 +1,38 @@
 import db from '../config/db.js';
 
 /**
+ * Helper: detect correct mimetype and send binary data properly
+ */
+const sendFileResponse = (res, file, isInline) => {
+    // Detect mimetype from filename if DB value is generic
+    let mimetype = file.mimetype || 'application/octet-stream';
+    const name = file.file_name.toLowerCase();
+    if (name.endsWith('.pdf')) mimetype = 'application/pdf';
+    else if (name.endsWith('.docx')) mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    else if (name.endsWith('.doc')) mimetype = 'application/msword';
+    else if (name.endsWith('.png')) mimetype = 'image/png';
+    else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimetype = 'image/jpeg';
+
+    // Ensure file_data is a proper Buffer (handles pg bytea hex strings)
+    const data = Buffer.isBuffer(file.file_data)
+        ? file.file_data
+        : Buffer.from(file.file_data, 'binary');
+
+    res.setHeader('Content-Type', mimetype);
+    res.setHeader('Content-Length', data.length);
+
+    if (isInline) {
+        res.setHeader('Content-Disposition', 'inline');
+        res.removeHeader('X-Frame-Options');
+        res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    } else {
+        res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+    }
+
+    res.end(data);
+};
+
+/**
  * Serves task attachments from the database
  */
 export const serveAttachment = async (req, res, next) => {
@@ -13,22 +45,7 @@ export const serveAttachment = async (req, res, next) => {
             return res.status(404).json({ message: 'Attachment not found' });
         }
 
-        const file = rows[0];
-        const isInline = preview === 'true';
-        
-        // Force PDF mimetype if filename suggests it
-        const mimetype = file.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : (file.mimetype || 'application/octet-stream');
-
-        res.setHeader('Content-Type', mimetype);
-        if (isInline) {
-            res.setHeader('Content-Disposition', 'inline');
-            res.setHeader('X-Frame-Options', 'ALLOWALL');
-            res.setHeader('Content-Security-Policy', "frame-ancestors *");
-            res.setHeader('Access-Control-Allow-Origin', '*'); // Allow frontend to fetch for Blob injection
-        } else {
-            res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
-        }
-        res.send(file.file_data);
+        sendFileResponse(res, rows[0], preview === 'true');
     } catch (error) {
         next(error);
     }
@@ -47,22 +64,7 @@ export const serveUpload = async (req, res, next) => {
             return res.status(404).json({ message: 'File not found' });
         }
 
-        const file = rows[0];
-        const isInline = preview === 'true';
-
-        // Force PDF mimetype if filename suggests it
-        const mimetype = file.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : (file.mimetype || 'application/octet-stream');
-
-        res.setHeader('Content-Type', mimetype);
-        if (isInline) {
-            res.setHeader('Content-Disposition', 'inline');
-            res.setHeader('X-Frame-Options', 'ALLOWALL');
-            res.setHeader('Content-Security-Policy', "frame-ancestors *");
-            res.setHeader('Access-Control-Allow-Origin', '*'); // Allow frontend to fetch for Blob injection
-        } else {
-            res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
-        }
-        res.send(file.file_data);
+        sendFileResponse(res, rows[0], preview === 'true');
     } catch (error) {
         next(error);
     }
