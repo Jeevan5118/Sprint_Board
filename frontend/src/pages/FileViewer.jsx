@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileText, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { isWordDoc, isTextFile, isPdf } from '../utils/fileUtils';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const FileViewer = () => {
     const [searchParams] = useSearchParams();
@@ -38,8 +37,8 @@ const FileViewer = () => {
         try {
             const response = await fetch(fileUrl);
             if (!response.ok) throw new Error(`Server returned ${response.status}`);
-            const data = await response.arrayBuffer();
-            const doc = await pdfjsLib.getDocument({ data }).promise;
+            const arrayBuffer = await response.arrayBuffer();
+            const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             setPdfDoc(doc);
             setTotalPages(doc.numPages);
             setCurrentPage(1);
@@ -124,7 +123,7 @@ const FileViewer = () => {
     }, [pdfDoc, currentPage, scale, renderPage]);
 
     return (
-        <div className="h-full flex flex-col bg-slate-50">
+        <div className="h-screen w-screen flex flex-col bg-slate-50 overscroll-none overflow-hidden">
             {/* Toolbar */}
             <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -193,7 +192,7 @@ const FileViewer = () => {
                 )}
 
                 {!isLoading && !error && isPdfFile && (
-                    <div ref={canvasContainerRef} className="max-w-4xl w-full" style={{ minHeight: '200px' }} />
+                    <div ref={canvasContainerRef} className="max-w-4xl w-full min-h-[400px] flex flex-col items-center" />
                 )}
 
                 {!isLoading && !error && isImage && (

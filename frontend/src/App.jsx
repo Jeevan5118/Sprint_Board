@@ -33,7 +33,7 @@ function App() {
               <Route path="/login" element={<Login />} />
             </Route>
 
-            {/* Protected Area */}
+            {/* Standalone Protected Routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
 
@@ -49,11 +49,16 @@ function App() {
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin/import" element={<AdminImport />} />
-              <Route path="/viewer" element={<FileViewer />} />
 
               {/* Catch-all for scaffold */}
               <Route path="*" element={<div className="p-6 text-center text-slate-500 flex flex-col items-center justify-center p-12">Page under construction...</div>} />
             </Route>
+
+            {/* Full Screen Viewer (Needs to be outside DashboardLayout but still protected logic inside) */}
+            <Route path="/viewer" element={<FileViewer />} />
+
+            {/* Catch-all for scaffold */}
+            <Route path="*" element={<div className="p-6 text-center text-slate-500 flex flex-col items-center justify-center p-12">Page under construction...</div>} />
           </Routes>
         </Router>
       </AuthProvider>

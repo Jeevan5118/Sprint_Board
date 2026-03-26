@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, FileText, Loader2, Download, ExternalLink } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { getAbsoluteFileUrl, isWordDoc, isTextFile, isPdf } from '../../utils/fileUtils';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 const FilePreviewModal = ({ file, onClose }) => {
     const navigate = useNavigate();
@@ -35,7 +34,7 @@ const FilePreviewModal = ({ file, onClose }) => {
             const container = pdfContainerRef.current;
             const containerWidth = Math.max(container.offsetWidth || 800, 300);
             const unscaledViewport = page.getViewport({ scale: 1 });
-            const scale = Math.min((containerWidth * 0.9) / unscaledViewport.width, 2.5);
+            const scale = Math.min((containerWidth * 0.95) / unscaledViewport.width, 2.5) || 1.5;
             const viewport = page.getViewport({ scale });
 
             // Clear old canvas
@@ -70,9 +69,9 @@ const FilePreviewModal = ({ file, onClose }) => {
                 if (isPdfFile) {
                     const response = await fetch(fileUrl);
                     if (!response.ok) throw new Error(`Server returned ${response.status}`);
-                    const data = await response.arrayBuffer();
+                    const arrayBuffer = await response.arrayBuffer();
                     if (cancelled) return;
-                    const doc = await pdfjsLib.getDocument({ data }).promise;
+                    const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                     if (cancelled) return;
                     setPdfDoc(doc);
                     setTotalPages(doc.numPages);
@@ -192,7 +191,7 @@ const FilePreviewModal = ({ file, onClose }) => {
                     )}
 
                     {isPdfFile && (
-                        <div ref={pdfContainerRef} className="w-full min-h-full p-4" style={{ minHeight: '200px' }} />
+                        <div ref={pdfContainerRef} className="w-full min-h-[400px] p-4 flex flex-col items-center" />
                     )}
 
                     {isWord && (
