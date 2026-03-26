@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
-import { renderAsync } from 'docx-preview';
+import FilePreviewModal from '../components/common/FilePreviewModal';
 
 const Settings = () => {
     const { user, updateUser } = useAuth();
@@ -41,59 +41,6 @@ const Settings = () => {
     const [previewFile, setPreviewFile] = useState(null);
     const [isDocxLoading, setIsDocxLoading] = useState(false);
     const docxRef = useRef(null);
-
-    const isWordDoc = (mimetype) => {
-        return mimetype?.includes('word') || 
-               mimetype?.includes('officedocument.wordprocessingml') ||
-               mimetype?.includes('msword');
-    };
-
-    const getAbsoluteFileUrl = (url) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const apiBase = import.meta.env.VITE_API_URL || '';
-        if (apiBase.startsWith('http')) {
-            const root = apiBase.replace(/\/api\/v1$/, '').replace(/\/api$/, '');
-            return `${root}${url}`;
-        }
-        return url;
-    };
-
-    // Effect to handle Word Document Previews
-    useEffect(() => {
-        const renderDocx = async () => {
-            if (isWordDoc(previewFile?.mimetype) && docxRef.current) {
-                setIsDocxLoading(true);
-                try {
-                    // Pre-clear the container
-                    docxRef.current.innerHTML = '';
-                    
-                    const response = await fetch(
-                        `${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`
-                    );
-                    
-                    if (!response.ok) throw new Error('Failed to fetch document');
-                    
-                    const blob = await response.blob();
-                    await renderAsync(blob, docxRef.current, undefined, { 
-                        inWrapper: false,
-                        ignoreWidth: false,
-                        ignoreHeight: false,
-                        debug: false
-                    });
-                } catch (error) {
-                    console.error('Docx Preview Error:', error);
-                    // If rendering fails, we don't clear the container so the fallback below shows
-                } finally {
-                    setIsDocxLoading(false);
-                }
-            }
-        };
-
-        if (previewFile) {
-            renderDocx();
-        }
-    }, [previewFile]);
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -576,7 +523,7 @@ const Settings = () => {
                                                                         <Eye className="w-5 h-5" />
                                                                     </button>
                                                                     <a
-                                                                        href={`${getAbsoluteFileUrl(upload.file_url)}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
@@ -709,74 +656,10 @@ const Settings = () => {
 
             {/* In-App Preview Modal */}
             {previewFile && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
-                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setPreviewFile(null)}></div>
-                    <div className="relative bg-white w-full max-w-5xl h-full max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-300">
-                        {/* Header */}
-                        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-white shrink-0">
-                            <div className="flex items-center space-x-3">
-                                <div className={`p-2 rounded-lg ${previewFile.file_type === 'Report' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                    <FileText className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">{previewFile.file_name}</h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{previewFile.mimetype} • {previewFile.user_name || user?.name}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button 
-                                    onClick={() => setPreviewFile(null)}
-                                    className="p-2.5 bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all border border-slate-100"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Content Container */}
-                        <div className="flex-1 overflow-auto bg-slate-50 flex items-center justify-center p-4">
-                            {previewFile.mimetype.startsWith('image/') ? (
-                                <img 
-                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`} 
-                                    alt={previewFile.file_name}
-                                    className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-                                />
-                            ) : previewFile.mimetype === 'application/pdf' ? (
-                                <iframe 
-                                    src={`${getAbsoluteFileUrl(previewFile.file_url)}${previewFile.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`}
-                                    className="w-full h-full border-0 rounded-lg shadow-sm"
-                                    title={previewFile.file_name}
-                                ></iframe>
-                            ) : isWordDoc(previewFile.mimetype) ? (
-                                <div className="w-full h-full relative flex flex-col bg-white rounded-lg overflow-hidden shadow-sm border border-slate-100">
-                                    {isDocxLoading && (
-                                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-                                            <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Processing Document...</p>
-                                        </div>
-                                    )}
-                                    <div 
-                                        ref={docxRef} 
-                                        className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 docx-container"
-                                    ></div>
-                                </div>
-                            ) : (
-                                <div className="text-center p-12 bg-white rounded-3xl border border-slate-100 shadow-sm max-w-sm">
-                                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6">
-                                        <FileText className="w-10 h-10" />
-                                    </div>
-                                    <h4 className="text-lg font-black text-slate-800 uppercase tracking-tight">Preview Unavailable</h4>
-                                    <p className="text-sm text-slate-500 mt-2 font-medium">This file format ({previewFile.mimetype}) cannot be viewed directly in-app.</p>
-                                    <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                                            Please use the <span className="text-emerald-600">Download Icon 📥</span> in the report list to view this file.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <FilePreviewModal
+                    file={previewFile}
+                    onClose={() => setPreviewFile(null)}
+                />
             )}
         </div>
     );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, Paperclip, Link as LinkIcon, MessageSquare, Plus, Trash2, Tag, Flag, Hash, User, FolderOpen, Loader2, Edit3, History } from 'lucide-react';
+import { X, Clock, Paperclip, Link as LinkIcon, MessageSquare, Plus, Trash2, Tag, Flag, Hash, User, FolderOpen, Loader2, Edit3, History, Eye } from 'lucide-react';
 import api from '../../api/axios';
+import FilePreviewModal from '../common/FilePreviewModal';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 
@@ -21,6 +22,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const [history, setHistory] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [previewFile, setPreviewFile] = useState(null);
 
     useEffect(() => {
         if (!isOpen || !task || !teamId) return;
@@ -306,9 +308,18 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                                     <p className="text-[10px] text-slate-400 uppercase font-black">{new Date(file.uploaded_at).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
-                                            <button className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all flex-shrink-0">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <button
+                                                    onClick={() => setPreviewFile(file)}
+                                                    className="p-2 text-slate-400 hover:text-primary-blue hover:bg-primary-blue/5 rounded-lg transition-all"
+                                                    title="Preview File"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                     {attachments.length === 0 && !isUploading && (
@@ -489,6 +500,13 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex justify-end">
                 <button onClick={onClose} className="btn-ghost text-sm px-6">Close</button>
             </div>
+
+            {previewFile && (
+                <FilePreviewModal
+                    file={previewFile}
+                    onClose={() => setPreviewFile(null)}
+                />
+            )}
         </div>
     );
 };
