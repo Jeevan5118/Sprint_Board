@@ -39,8 +39,6 @@ const Settings = () => {
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
-    const [isDocxLoading, setIsDocxLoading] = useState(false);
-    const docxRef = useRef(null);
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();

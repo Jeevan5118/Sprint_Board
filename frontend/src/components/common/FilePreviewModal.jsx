@@ -2,30 +2,30 @@ import { useEffect, useRef, useState } from 'react';
 import { X, FileText, Loader2, Download, ExternalLink } from 'lucide-react';
 import { renderAsync } from 'docx-preview';
 
+const isWordDoc = (mimetype) => {
+    return mimetype?.includes('word') ||
+        mimetype?.includes('officedocument.wordprocessingml') ||
+        mimetype?.includes('msword');
+};
+
+const isTextFile = (mimetype) => {
+    return mimetype?.includes('text/plain') || mimetype?.includes('application/json');
+};
+
+const getAbsoluteFileUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    if (apiBase.startsWith('http')) {
+        const root = apiBase.replace(/\/api\/v1$/, '').replace(/\/api$/, '');
+        return `${root}${url}`;
+    }
+    return url;
+};
+
 const FilePreviewModal = ({ file, onClose }) => {
     const docxRef = useRef(null);
     const [isLoading, setIsLoading] = useState(false);
-
-    const isWordDoc = (mimetype) => {
-        return mimetype?.includes('word') ||
-            mimetype?.includes('officedocument.wordprocessingml') ||
-            mimetype?.includes('msword');
-    };
-
-    const isTextFile = (mimetype) => {
-        return mimetype?.includes('text/plain') || mimetype?.includes('application/json');
-    };
-
-    const getAbsoluteFileUrl = (url) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const apiBase = import.meta.env.VITE_API_URL || '';
-        if (apiBase.startsWith('http')) {
-            const root = apiBase.replace(/\/api\/v1$/, '').replace(/\/api$/, '');
-            return `${root}${url}`;
-        }
-        return url;
-    };
 
     const fileUrl = `${getAbsoluteFileUrl(file.file_url)}${file.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`;
 
