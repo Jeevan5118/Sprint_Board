@@ -16,7 +16,7 @@ const Teams = ({ isPowerHour = false }) => {
 
     const fetchTeams = async () => {
         try {
-            const { data } = await api.get('/teams');
+            const { data } = await api.get(`/teams?is_power_hour=${isPowerHour}`);
             setTeams(data);
         } catch {
             toast.error('Failed to load teams');

@@ -6,7 +6,7 @@ export const getTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
         const { sprint_id, status, assignee_id, is_power_hour, project_id } = req.query;
-        const isPowerHourBool = is_power_hour === 'true';
+        const isPowerHourBool = is_power_hour === 'true' || is_power_hour === true;
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -56,7 +56,7 @@ export const getTasks = async (req, res, next) => {
 export const getKanbanTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const isPowerHourBool = req.query.is_power_hour === 'true';
+        const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -65,7 +65,7 @@ export const getKanbanTasks = async (req, res, next) => {
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
-            WHERE t.team_id = $1 AND t.sprint_id IS NULL AND t.is_power_hour = $2
+            WHERE t.team_id = $1 AND t.sprint_id IS NULL AND (t.is_power_hour = $2 OR (t.is_power_hour IS NULL AND $2 = false))
         `;
         let params = [teamId, isPowerHourBool];
         // Logic 3: Restricted Member visibility for Kanban
@@ -95,7 +95,7 @@ export const createTask = async (req, res, next) => {
             story_points, estimated_hours, due_date,
             project_id, sprint_id, assignee_id, is_power_hour
         } = req.body;
-        const isPowerHourBool = Boolean(is_power_hour);
+        const isPowerHourBool = is_power_hour === true || is_power_hour === 'true';
 
         if (!title) return res.status(400).json({ message: 'Title is required' });
 

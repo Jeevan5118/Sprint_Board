@@ -13,20 +13,27 @@ const ProjectDetails = ({ isPowerHour = false }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTask, setSelectedTask] = useState(null);
+    const [activeSprint, setActiveSprint] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchProjectDetails = async () => {
             try {
-                // We need a specific project endpoint or filter tasks by project_id
+                // Fetch projects to find the current one
                 const projectsRes = await api.get(`/projects?is_power_hour=${isPowerHour}`);
                 const found = projectsRes.data.find(p => p.id === projectId);
                 
                 if (found) {
                     setProject(found);
-                    // Now fetch tasks for this project using server-side project_id filtering
-                    const tasksRes = await api.get(`/teams/${found.team_id}/tasks?is_power_hour=${isPowerHour}&project_id=${projectId}`);
+                    // Fetch tasks, and also fetch active sprint for the team
+                    const [tasksRes, sprintsRes] = await Promise.all([
+                        api.get(`/teams/${found.team_id}/tasks?is_power_hour=${isPowerHour}&project_id=${projectId}`),
+                        api.get(`/teams/${found.team_id}/sprints?is_power_hour=${isPowerHour}`)
+                    ]);
                     setTasks(tasksRes.data);
+                    
+                    const active = sprintsRes.data.find(s => s.status === 'Active');
+                    setActiveSprint(active);
                 }
             } catch {
                 toast.error('Failed to load project details');
@@ -176,8 +183,10 @@ const ProjectDetails = ({ isPowerHour = false }) => {
                 onClose={() => setIsModalOpen(false)}
                 onSaved={handleTaskSaved}
                 teamId={project.team_id}
+                sprintId={activeSprint?.id}
+                isPowerHour={isPowerHour}
                 editTask={null}
-                // Pre-select project_id in TaskModal if we add that prop or logic
+                defaultProjectId={projectId}
             />
         </div>
     );

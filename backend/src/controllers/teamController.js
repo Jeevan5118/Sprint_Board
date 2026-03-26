@@ -6,12 +6,14 @@ export const getTeams = async (req, res, next) => {
         const userId = req.user.id;
         const isAdmin = req.user.role === 'Admin';
 
+        const isPowerHour = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+        
         let query = `
             SELECT t.*,
                 COUNT(DISTINCT tm.user_id) AS members_count,
                 (SELECT u.name FROM users u JOIN team_members tm2 ON u.id = tm2.user_id
                  WHERE tm2.team_id = t.id AND u.role = 'Team Lead' LIMIT 1) AS lead_name,
-                (SELECT s.name FROM sprints s WHERE s.team_id = t.id AND s.status = 'Active' LIMIT 1) AS active_sprint
+                (SELECT s.name FROM sprints s WHERE s.team_id = t.id AND s.status = 'Active' AND (s.is_power_hour = $${isAdmin ? '1' : '2'} OR (s.is_power_hour IS NULL AND $${isAdmin ? '1' : '2'} = false)) LIMIT 1) AS active_sprint
             FROM teams t
             LEFT JOIN team_members tm ON t.id = tm.team_id
         `;
