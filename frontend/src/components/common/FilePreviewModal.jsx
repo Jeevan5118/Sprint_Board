@@ -6,12 +6,29 @@ import { getAbsoluteFileUrl, isWordDoc, isTextFile, isPdf } from '../../utils/fi
 const FilePreviewModal = ({ file, onClose }) => {
     const docxRef = useRef(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [blobUrl, setBlobUrl] = useState(null);
+    const [textContent, setTextContent] = useState('');
 
     const fileUrl = `${getAbsoluteFileUrl(file.file_url)}${file.file_url.includes('?') ? '&' : '?'}preview=true&token=${localStorage.getItem('token')}&_cb=${Date.now()}`;
 
-    const [textContent, setTextContent] = useState('');
-
     useEffect(() => {
+        const fetchFileAsBlob = async () => {
+            if (isPdf(file.mimetype) || file.file_name.toLowerCase().endsWith('.pdf')) {
+                setIsLoading(true);
+                try {
+                    const response = await fetch(fileUrl);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+                    setBlobUrl(url);
+                } catch (error) {
+                    console.error('PDF Fetch Error:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            }
+        };
+
         const renderDoc = async () => {
             if (isWordDoc(file.mimetype) && docxRef.current) {
                 setIsLoading(true);
@@ -41,14 +58,24 @@ const FilePreviewModal = ({ file, onClose }) => {
             }
         };
 
-        if (file) renderDoc();
+        if (file) {
+            fetchFileAsBlob();
+            renderDoc();
+        }
+
+        // Cleanup Blob URL on unmount
+        return () => {
+            if (blobUrl) {
+                URL.revokeObjectURL(blobUrl);
+            }
+        };
     }, [file, fileUrl]);
 
     if (!file) return null;
 
     const openInNewTab = () => {
-        // Keep preview=true so the browser opens its native viewer instead of downloading
-        window.open(fileUrl, '_blank');
+        // Use the BLOB URL if available, otherwise fallback to direct URL
+        window.open(blobUrl || fileUrl, '_blank');
     };
 
     return (
@@ -102,24 +129,35 @@ const FilePreviewModal = ({ file, onClose }) => {
                 </div>
 
                 {/* Content Container - Edge to Edge */}
-                <div className="flex-1 overflow-auto bg-slate-100/50 flex items-center justify-center relative group">
+                <div className="flex-1 overflow-auto bg-white flex items-center justify-center relative group">
+                    {isLoading && (
+                        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm">
+                            <Loader2 className="w-12 h-12 text-primary-blue animate-spin mb-4" />
+                            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Initializing Secure Preview...</p>
+                        </div>
+                    )}
+
                     {file.mimetype.startsWith('image/') ? (
-                        <div className="w-full h-full flex items-center justify-center p-4 md:p-12 overflow-auto">
+                        <div className="w-full h-full flex items-center justify-center p-4 md:p-12 overflow-auto bg-slate-100/30">
                             <img src={fileUrl} alt={file.file_name} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-transform duration-500 hover:scale-[1.02]" />
                         </div>
-                    ) : isPdf(file.mimetype) ? (
-                        <div className="w-full h-full bg-white relative">
-                            {/* Native Browser PDF Viewer Component */}
-                            <iframe 
-                                src={fileUrl} 
-                                className="w-full h-full border-0 shadow-inner" 
-                                title={file.file_name}
-                                type="application/pdf"
-                                loading="lazy"
-                                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                            ></iframe>
+                    ) : (isPdf(file.mimetype) || file.file_name.toLowerCase().endsWith('.pdf')) ? (
+                        <div className="w-full h-full relative">
+                            {blobUrl ? (
+                                <iframe 
+                                    src={blobUrl} 
+                                    className="w-full h-full border-0" 
+                                    title={file.file_name}
+                                    type="application/pdf"
+                                ></iframe>
+                            ) : !isLoading && (
+                                <div className="text-center p-12">
+                                    <h4 className="text-slate-800 font-black uppercase">Unable to Load PDF Stream</h4>
+                                    <button onClick={openInNewTab} className="btn-primary mt-4">Open Externally</button>
+                                </div>
+                            )}
                             
-                            {/* Overlay Controls for PDF if needed */}
+                            {/* Overlay Controls for PDF */}
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={openInNewTab} className="bg-slate-900/90 text-white px-6 py-2.5 rounded-full hover:bg-slate-900 shadow-2xl backdrop-blur-md flex items-center gap-2 text-xs font-black uppercase tracking-widest border border-white/10">
                                     <Maximize2 className="w-4 h-4" /> Expand to Full Tab

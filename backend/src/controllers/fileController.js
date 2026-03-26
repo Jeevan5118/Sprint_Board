@@ -16,11 +16,15 @@ export const serveAttachment = async (req, res, next) => {
         const file = rows[0];
         const isInline = preview === 'true';
         
-        res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+        // Force PDF mimetype if filename suggests it
+        const mimetype = file.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : (file.mimetype || 'application/octet-stream');
+
+        res.setHeader('Content-Type', mimetype);
         if (isInline) {
             res.setHeader('Content-Disposition', 'inline');
             res.setHeader('X-Frame-Options', 'ALLOWALL');
             res.setHeader('Content-Security-Policy', "frame-ancestors *");
+            res.setHeader('Access-Control-Allow-Origin', '*'); // Allow frontend to fetch for Blob injection
         } else {
             res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
         }
@@ -46,11 +50,15 @@ export const serveUpload = async (req, res, next) => {
         const file = rows[0];
         const isInline = preview === 'true';
 
-        res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
+        // Force PDF mimetype if filename suggests it
+        const mimetype = file.file_name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : (file.mimetype || 'application/octet-stream');
+
+        res.setHeader('Content-Type', mimetype);
         if (isInline) {
             res.setHeader('Content-Disposition', 'inline');
             res.setHeader('X-Frame-Options', 'ALLOWALL');
             res.setHeader('Content-Security-Policy', "frame-ancestors *");
+            res.setHeader('Access-Control-Allow-Origin', '*'); // Allow frontend to fetch for Blob injection
         } else {
             res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
         }
