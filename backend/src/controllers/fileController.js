@@ -19,6 +19,8 @@ export const serveAttachment = async (req, res, next) => {
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
         if (isInline) {
             res.setHeader('Content-Disposition', 'inline');
+            res.setHeader('X-Frame-Options', 'ALLOWALL');
+            res.setHeader('Content-Security-Policy', "frame-ancestors *");
         } else {
             res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
         }
@@ -47,6 +49,8 @@ export const serveUpload = async (req, res, next) => {
         res.setHeader('Content-Type', file.mimetype || 'application/octet-stream');
         if (isInline) {
             res.setHeader('Content-Disposition', 'inline');
+            res.setHeader('X-Frame-Options', 'ALLOWALL');
+            res.setHeader('Content-Security-Policy', "frame-ancestors *");
         } else {
             res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
         }
