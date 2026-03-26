@@ -26,8 +26,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API Debug Route (Temporary)
+// API Debug Routes (Temporary)
 app.get('/api/debug/reconcile', reconcileData);
+app.get('/api/version', (req, res) => res.json({ version: '1.0.9-hardened-final', timestamp: '2026-03-26-1928' }));
 
 // API Routes
 app.use('/api/v1', routes);
