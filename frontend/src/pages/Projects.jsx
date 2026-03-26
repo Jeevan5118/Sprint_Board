@@ -12,7 +12,7 @@ const STATUS_COLORS = {
     'On Hold': 'bg-amber-100 text-amber-800',
 };
 
-const Projects = () => {
+const Projects = ({ isPowerHour = false }) => {
     const { user } = useAuth();
     const [teams, setTeams] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -26,7 +26,7 @@ const Projects = () => {
         try {
             const [teamsRes, projectsRes] = await Promise.all([
                 api.get('/teams'),
-                api.get('/projects')
+                api.get(`/projects?is_power_hour=${isPowerHour}`)
             ]);
             setTeams(teamsRes.data);
             setProjects(projectsRes.data);
@@ -37,7 +37,7 @@ const Projects = () => {
         }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    useEffect(() => { fetchData(); }, [isPowerHour]);
 
     const handleCreateProject = async (e) => {
         e.preventDefault();
@@ -46,7 +46,8 @@ const Projects = () => {
         try {
             await api.post(`/teams/${form.team_id}/projects`, {
                 name: form.name,
-                description: form.description
+                description: form.description,
+                is_power_hour: isPowerHour
             });
             // Re-fetch to get enriched data
             fetchData();
@@ -81,12 +82,14 @@ const Projects = () => {
 
     if (isLoading) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue"></div></div>;
 
+    const contextPath = isPowerHour ? 'power-hour-projects' : 'projects';
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Projects</h1>
-                    <p className="text-sm text-slate-500 mt-1">{projects.length} projects across {Object.keys(grouped).length} teams</p>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Projects' : 'Projects'}</h1>
+                    <p className="text-sm text-slate-500 mt-1">{projects.length} {isPowerHour ? 'isolated' : 'active'} projects across {Object.keys(grouped).length} teams</p>
                 </div>
                 {canCreate && (
                     <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center">
@@ -98,7 +101,7 @@ const Projects = () => {
             {projects.length === 0 ? (
                 <div className="card text-center py-16 text-slate-400">
                     <Folder className="mx-auto h-12 w-12 mb-3 text-slate-300" />
-                    <p className="font-semibold">No projects yet</p>
+                    <p className="font-semibold">No {isPowerHour ? 'Power Hour' : ''} projects yet</p>
                     <p className="text-sm mt-1">Create your first project to get started.</p>
                 </div>
             ) : (
@@ -125,8 +128,8 @@ const Projects = () => {
                                         <div key={proj.id} className="card hover:shadow-md transition-all group relative">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex items-center">
-                                                    <div className="h-9 w-9 bg-indigo-50 rounded-xl flex items-center justify-center mr-3 flex-shrink-0">
-                                                        <Folder className="h-4 w-4 text-indigo-500" />
+                                                    <div className={`h-9 w-9 ${isPowerHour ? 'bg-amber-50' : 'bg-indigo-50'} rounded-xl flex items-center justify-center mr-3 flex-shrink-0`}>
+                                                        <Folder className={`h-4 w-4 ${isPowerHour ? 'text-amber-500' : 'text-indigo-500'}`} />
                                                     </div>
                                                     <div>
                                                         <h3 className="font-semibold text-slate-900 text-sm leading-tight">{proj.name}</h3>
@@ -162,7 +165,7 @@ const Projects = () => {
                                                     {proj.status || 'Active'}
                                                 </span>
                                                 <Link
-                                                    to={`/projects/${proj.id}`}
+                                                    to={`/${contextPath}/${proj.id}`}
                                                     className="text-xs text-primary-blue hover:text-blue-800 font-medium flex items-center"
                                                 >
                                                     Open <ArrowRight className="w-3 h-3 ml-0.5" />

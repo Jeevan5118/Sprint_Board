@@ -64,3 +64,19 @@ export const notifyTeamLeads = async (teamId, type, message, linkUrl = null) => 
         console.error('Failed to notify team leads:', error);
     }
 };
+
+/**
+ * Broadcasts to both Admins AND the Team Leads of a specific team
+ */
+export const notifyAdminsAndLeads = async (teamId, type, message, linkUrl = null) => {
+    try {
+        // Notify Admins
+        await notifyAdmins(type, message, linkUrl);
+        // Notify Team Leads
+        if (teamId) {
+            await notifyTeamLeads(teamId, type, message, linkUrl);
+        }
+    } catch (error) {
+        console.error('Failed to notify admins and leads:', error);
+    }
+};

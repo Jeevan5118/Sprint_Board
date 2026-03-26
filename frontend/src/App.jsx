@@ -37,6 +37,7 @@ function App() {
             {/* Standalone Protected Routes */}
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/power-hour-dashboard" element={<Dashboard isPowerHour={true} />} />
 
               <Route path="/teams" element={<Teams />} />
               <Route path="/teams/:teamId" element={<TeamDetails />} />
@@ -52,6 +53,8 @@ function App() {
 
               <Route path="/projects" element={<Projects />} />
               <Route path="/projects/:projectId" element={<ProjectDetails />} />
+              <Route path="/power-hour-projects" element={<Projects isPowerHour={true} />} />
+              <Route path="/power-hour-projects/:projectId" element={<ProjectDetails isPowerHour={true} />} />
 
               <Route path="/timeline" element={<Timeline />} />
               <Route path="/settings" element={<Settings />} />

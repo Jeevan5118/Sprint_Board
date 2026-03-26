@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import TaskDrawer from '../components/sprint/TaskDrawer';
 import TaskModal from '../components/sprint/TaskModal';
 
-const ProjectDetails = () => {
+const ProjectDetails = ({ isPowerHour = false }) => {
     const { projectId } = useParams();
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
@@ -19,18 +19,14 @@ const ProjectDetails = () => {
         const fetchProjectDetails = async () => {
             try {
                 // We need a specific project endpoint or filter tasks by project_id
-                // Since project routes are scoped /teams/:teamId/projects, we might need a better way if we only have projectId
-                // For now, let's try to get projects from /projects and find our one
-                const projectsRes = await api.get('/projects');
+                const projectsRes = await api.get(`/projects?is_power_hour=${isPowerHour}`);
                 const found = projectsRes.data.find(p => p.id === projectId);
                 
                 if (found) {
                     setProject(found);
-                    // Now fetch tasks for this project
-                    // Task API supports sprint_id, status, assignee_id but not project_id yet in req.query
-                    // Let's fetch all tasks for the team and filter locally or update backend
-                    const tasksRes = await api.get(`/teams/${found.team_id}/tasks`);
-                    setTasks(tasksRes.data.filter(t => t.project_id === found.id));
+                    // Now fetch tasks for this project using server-side project_id filtering
+                    const tasksRes = await api.get(`/teams/${found.team_id}/tasks?is_power_hour=${isPowerHour}&project_id=${projectId}`);
+                    setTasks(tasksRes.data);
                 }
             } catch {
                 toast.error('Failed to load project details');
@@ -40,7 +36,7 @@ const ProjectDetails = () => {
         };
 
         fetchProjectDetails();
-    }, [projectId]);
+    }, [projectId, isPowerHour]);
 
     const filteredTasks = tasks.filter(t => 
         t.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -58,25 +54,27 @@ const ProjectDetails = () => {
     if (isLoading) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue"></div></div>;
     if (!project) return <div className="p-8 text-center text-slate-500">Project not found.</div>;
 
+    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
-                <Link to="/projects" className="text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center mb-4 transition-colors">
-                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to Projects
+                <Link to={isPowerHour ? "/power-hour-projects" : "/projects"} className="text-sm font-medium text-slate-500 hover:text-slate-700 flex items-center mb-4 transition-colors">
+                    <ArrowLeft className="w-4 h-4 mr-1" /> Back to {isPowerHour ? "Power Hour Projects" : "Projects"}
                 </Link>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
                         <p className="text-sm text-slate-500 mt-1">
-                            Team: <Link to={`/teams/${project.team_id}`} className="text-primary-blue hover:underline font-medium">{project.team_name}</Link>
+                            Team: <Link to={`/${contextPath}/${project.team_id}`} className="text-primary-blue hover:underline font-medium">{project.team_name}</Link>
                         </p>
                     </div>
                     <div className="flex space-x-3">
-                        <Link to={`/teams/${project.team_id}/sprint-board`} className="btn-secondary flex items-center">
+                        <Link to={`/${contextPath}/${project.team_id}/sprint-board`} className="btn-secondary flex items-center">
                             <LayoutTemplate className="w-4 h-4 mr-2 text-indigo-600" /> Sprint Board
                         </Link>
-                        <Link to={`/teams/${project.team_id}/kanban`} className="btn-secondary flex items-center">
+                        <Link to={`/${contextPath}/${project.team_id}/kanban`} className="btn-secondary flex items-center">
                             <SquareKanban className="w-4 h-4 mr-2 text-emerald-600" /> Kanban Board
                         </Link>
                     </div>

@@ -1,16 +1,37 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, KanbanSquare, Calendar, Bell, Settings, Database, X } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, FolderKanban, Calendar, Bell, Settings, Database, X, Zap } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
     const { user } = useAuth();
+    const location = useLocation();
     const canManageData = user?.role === 'Admin' || user?.role === 'Team Lead';
 
+    const isPowerHourMode = location.pathname.startsWith('/power-hour');
+
     const navItems = [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'Teams', path: '/teams', icon: Users },
-        { name: '⚡ Power Hour', path: '/power-hour-teams', icon: Users },
-        { name: 'Projects', path: '/projects', icon: FolderKanban },
+        { 
+            name: isPowerHourMode ? '⚡ PH Dashboard' : 'Dashboard', 
+            path: isPowerHourMode ? '/power-hour-dashboard' : '/dashboard', 
+            icon: LayoutDashboard 
+        },
+        { 
+            name: isPowerHourMode ? '⚡ PH Teams' : 'Teams', 
+            path: isPowerHourMode ? '/power-hour-teams' : '/teams', 
+            icon: Users 
+        },
+        { 
+            name: isPowerHourMode ? '⚡ PH Projects' : 'Projects', 
+            path: isPowerHourMode ? '/power-hour-projects' : '/projects', 
+            icon: FolderKanban 
+        },
+        // We always show the main Power Hour entry if we are NOT in power hour mode, 
+        // Or show the "Exit Power Hour" link if we ARE.
+        ...(isPowerHourMode ? [
+            { name: 'Exit Power Hour', path: '/dashboard', icon: Zap }
+        ] : [
+            { name: '⚡ Power Hour', path: '/power-hour-dashboard', icon: Zap }
+        ]),
         { name: 'Timeline', path: '/timeline', icon: Calendar },
         { name: 'Notifications', path: '/notifications', icon: Bell },
     ];

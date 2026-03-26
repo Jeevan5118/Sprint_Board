@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { notifyAdmins, notifyTeam } from '../services/notificationService.js';
+import { notifyAdmins, notifyTeam, notifyAdminsAndLeads } from '../services/notificationService.js';
 
 export const getSprintsByTeam = async (req, res, next) => {
     try {
@@ -18,12 +18,23 @@ export const createSprint = async (req, res, next) => {
         const { name, start_date, end_date, is_power_hour } = req.body;
         if (!name) return res.status(400).json({ message: 'Sprint name is required' });
 
-        const newSprint = await db.query(
-            'INSERT INTO sprints (name, team_id, start_date, end_date, is_power_hour) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [name, teamId, start_date, end_date, Boolean(is_power_hour)]
+        const isPowerHourBool = Boolean(is_power_hour);
+
+        const { rows } = await db.query(
+            'INSERT INTO sprints (name, start_date, end_date, team_id, is_power_hour) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [name, start_date, end_date, teamId, isPowerHourBool]
         );
 
-        res.status(201).json(newSprint.rows[0]);
+        // Notify Admins & Leads
+        const contextPath = isPowerHourBool ? 'power-hour-teams' : 'teams';
+        await notifyAdminsAndLeads(
+            teamId,
+            'SprintCreated',
+            `New sprint "${name}" created for ${rows[0].team_name || 'your team'}.`,
+            `/${contextPath}/${teamId}/sprints`
+        );
+
+        res.status(201).json(rows[0]);
     } catch (error) {
         next(error);
     }

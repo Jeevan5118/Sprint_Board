@@ -29,7 +29,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
         // Fetch members and projects for this team
         Promise.all([
             api.get(`/teams/${teamId}/members`),
-            api.get(`/teams/${teamId}/projects`)
+            api.get(`/teams/${teamId}/projects?is_power_hour=${isPowerHour}`)
         ]).then(([membersRes, projectsRes]) => {
             setMembers(membersRes.data);
             setProjects(projectsRes.data);

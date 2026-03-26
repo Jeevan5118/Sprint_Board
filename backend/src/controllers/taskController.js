@@ -1,11 +1,11 @@
 import db from '../config/db.js';
-import { createNotification, notifyAdmins } from '../services/notificationService.js';
+import { createNotification, notifyAdmins, notifyAdminsAndLeads } from '../services/notificationService.js';
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
 export const getTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { sprint_id, status, assignee_id, is_power_hour } = req.query;
+        const { sprint_id, status, assignee_id, is_power_hour, project_id } = req.query;
         const isPowerHourBool = is_power_hour === 'true';
 
         let query = `
@@ -15,26 +15,34 @@ export const getTasks = async (req, res, next) => {
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
-            WHERE t.team_id = $1 AND t.is_power_hour = $2
+            WHERE t.team_id = $1 AND (t.is_power_hour = $2 OR (t.is_power_hour IS NULL AND $2 = false))
         `;
-        let params = [teamId, isPowerHourBool];
-        let count = 3;
+        const params = [teamId, isPowerHourBool];
+
+        if (project_id) {
+            query += ` AND t.project_id = $${params.length + 1}`;
+            params.push(project_id);
+        }
 
         if (sprint_id) {
-            query += ` AND t.sprint_id = $${count++}`;
+            query += ` AND t.sprint_id = $${params.length + 1}`;
             params.push(sprint_id);
+        } else if (status === 'Backlog') {
+            query += ` AND t.sprint_id IS NULL`;
         }
-        if (status) {
-            query += ` AND t.status = $${count++}`;
+
+        if (status && status !== 'Backlog') {
+            query += ` AND t.status = $${params.length + 1}`;
             params.push(status);
         }
+
         if (assignee_id) {
-            query += ` AND t.assignee_id = $${count++}`;
+            query += ` AND t.assignee_id = $${params.length + 1}`;
             params.push(assignee_id);
         }
         // Logic 3: Restricted Member visibility
         if (req.user.role === 'Member') {
-            query += ` AND t.assignee_id = $${count++}`;
+            query += ` AND t.assignee_id = $${params.length + 1}`;
             params.push(req.user.id);
         }
 
@@ -131,9 +139,12 @@ export const createTask = async (req, res, next) => {
             teamId, project_id, targetSprintId, assignee_id, req.user.id, newSortOrder, isPowerHourBool
         ]);
 
-        // Logic 14: Notification trigger when assigned
+        // Logic 14: Notification trigger when assigned & Notify Admins/Leads on creation
+        const contextPath = isPowerHourBool ? 'power-hour-teams' : 'teams';
+        const link = targetSprintId ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+
+        // Notify Assignee
         if (assignee_id && assignee_id !== req.user.id) {
-            const link = targetSprintId ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
             await createNotification(
                 assignee_id,
                 'TaskAssigned',
@@ -141,6 +152,15 @@ export const createTask = async (req, res, next) => {
                 link
             );
         }
+
+        // Notify Admins & Team Leads (End-to-End coverage)
+        const { rows: creatorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        await notifyAdminsAndLeads(
+            teamId,
+            'TaskCreated',
+            `New task "${title}" created by ${creatorRow[0]?.name || 'a user'}.`,
+            link
+        );
 
         res.status(201).json(newTask.rows[0]);
     } catch (error) {
@@ -208,7 +228,7 @@ export const updateTaskStatus = async (req, res, next) => {
         await db.query('BEGIN');
 
         // Check if task exists first
-        const taskCheck = await db.query('SELECT status, sprint_id FROM tasks WHERE id = $1 AND team_id = $2', [id, teamId]);
+        const taskCheck = await db.query('SELECT title, status, sprint_id, is_power_hour FROM tasks WHERE id = $1 AND team_id = $2', [id, teamId]);
         if (taskCheck.rows.length === 0) {
             await db.query('ROLLBACK');
             return res.status(404).json({ message: 'Task not found' });
@@ -248,11 +268,18 @@ export const updateTaskStatus = async (req, res, next) => {
             await logTaskHistory(id, req.user.id, 'sprint', currentTask.sprint_id, sprint_id || 'Backlog');
         }
 
-        // Feature: Notify Admins on Task Completion
-        if (currentTask.status !== 'Done' && status === 'Done') {
+        // Feature: Notify Admins & Leads on Status Change (In Review or Done)
+        if (currentTask.status !== status) {
             const { rows: userRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
-            const link = sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
-            await notifyAdmins('Tasks', `Task moved to Done by ${userRow[0]?.name || 'a user'}.`, link);
+            const contextPath = currentTask.is_power_hour ? 'power-hour-teams' : 'teams';
+            const link = (sprint_id || currentTask.sprint_id) ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+            const actor = userRow[0]?.name || 'a user';
+
+            if (status === 'In Review') {
+                await notifyAdminsAndLeads(teamId, 'TaskStatus', `Task "${currentTask.title}" moved to In Review by ${actor}.`, link);
+            } else if (status === 'Done') {
+                await notifyAdminsAndLeads(teamId, 'TaskStatus', `Task "${currentTask.title}" moved to Done by ${actor}.`, link);
+            }
         }
 
         await db.query('COMMIT');

@@ -6,7 +6,7 @@ import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 
 // Team-wise analytics modal – Now uses pre-calculated data from the parent Dashboard
-const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData }) => {
+const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData, isPowerHour = false }) => {
     if (!isOpen) return null;
 
     const filterLabel = {
@@ -15,6 +15,8 @@ const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData }) => {
         leadTime: 'Avg Lead Time (Days)',
         throughput: 'Weekly Velocity (Tasks/Week)'
     }[filter];
+
+    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
@@ -31,7 +33,7 @@ const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData }) => {
                                 <h4 className="font-semibold text-slate-900">{t.name}</h4>
                                 <div className="flex items-center space-x-3 text-sm">
                                     <span className="text-slate-500 font-medium">{t.total} tasks</span>
-                                    <Link to={`/teams/${t.id}/sprint-board`} className="text-primary-blue hover:text-blue-800 font-bold text-xs flex items-center">
+                                    <Link to={`/${contextPath}/${t.id}/sprint-board`} className="text-primary-blue hover:text-blue-800 font-bold text-xs flex items-center">
                                         View Board <ArrowUpRight className="w-3 h-3 ml-1" />
                                     </Link>
                                 </div>
@@ -85,7 +87,7 @@ const AnalyticsInfoCard = ({ label, value, active, color }) => {
     );
 };
 
-const Dashboard = () => {
+const Dashboard = ({ isPowerHour = false }) => {
     const { user } = useAuth();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState(null);
@@ -97,7 +99,7 @@ const Dashboard = () => {
     const fetchDashboard = async () => {
         try {
             const [dashRes, uploadsRes] = await Promise.all([
-                api.get('/dashboard/analytics'),
+                api.get(`/dashboard/analytics?is_power_hour=${isPowerHour}`),
                 api.get('/reports')
             ]);
             setData(dashRes.data);
@@ -116,6 +118,7 @@ const Dashboard = () => {
         setIsSubmittingReport(true);
         const formData = new FormData();
         formData.append('report', file);
+        formData.append('is_power_hour', isPowerHour);
         // Automatically attach to the first team if available
         if (data?.teams?.length > 0) {
             formData.append('teamId', data.teams[0].id);
@@ -144,6 +147,7 @@ const Dashboard = () => {
         setIsUploadingWork(true);
         const formData = new FormData();
         formData.append('work', file);
+        formData.append('is_power_hour', isPowerHour);
         // Automatically attach to the first team if available
         if (data?.teams?.length > 0) {
             formData.append('teamId', data.teams[0].id);
@@ -169,7 +173,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchDashboard();
-    }, []);
+    }, [isPowerHour]);
 
     if (isLoading) return (
         <div className="flex justify-center items-center h-64">
@@ -190,11 +194,13 @@ const Dashboard = () => {
         { key: 'throughput', label: 'Weekly Velocity', value: data.analytics.throughput, icon: ArrowUpRight, color: 'bg-primary-blue/10 text-primary-blue', textColor: 'text-primary-blue' },
     ];
 
+    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Dashboard' : 'Dashboard'}</h1>
                     <p className="text-sm text-slate-500 mt-1">Welcome back, {user?.name} 👋</p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -289,8 +295,8 @@ const Dashboard = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                                                <Link to={`/teams/${team.id}/sprint-board`} className="text-primary-blue hover:text-blue-900">Sprint Board</Link>
-                                                <Link to={`/teams/${team.id}/kanban`} className="text-primary-blue hover:text-blue-900">Kanban</Link>
+                                                <Link to={`/${contextPath}/${team.id}/sprint-board`} className="text-primary-blue hover:text-blue-900">Sprint Board</Link>
+                                                <Link to={`/${contextPath}/${team.id}/kanban`} className="text-primary-blue hover:text-blue-900">Kanban</Link>
                                             </td>
                                         </tr>
                                     ))}
@@ -399,6 +405,7 @@ const Dashboard = () => {
                 onClose={() => setAnalyticsModal(null)}
                 filter={analyticsModal}
                 teamData={data.teams}
+                isPowerHour={isPowerHour}
             />
         </div>
     );

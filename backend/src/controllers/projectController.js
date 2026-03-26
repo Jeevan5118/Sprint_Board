@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { notifyAdmins, notifyTeam } from '../services/notificationService.js';
+import { notifyAdmins, notifyTeam, notifyAdminsAndLeads } from '../services/notificationService.js';
 
 export const getAllProjects = async (req, res, next) => {
     try {
@@ -64,16 +64,23 @@ export const createProject = async (req, res, next) => {
         const { name, description, is_power_hour } = req.body;
         if (!name) return res.status(400).json({ message: 'Project name is required' });
 
-        const newProject = await db.query(
-            'INSERT INTO projects (name, description, team_id, is_power_hour) VALUES ($1, $2, $3, $4) RETURNING *',
-            [name, description, teamId, Boolean(is_power_hour)]
+        const isPowerHourBool = Boolean(is_power_hour);
+
+        const { rows } = await db.query(
+            'INSERT INTO projects (name, description, team_id, is_power_hour) VALUES ($1, $2, $3, $4) RETURNING *, (SELECT name FROM teams WHERE id = $3) AS team_name',
+            [name, description, teamId, isPowerHourBool]
         );
 
-        // Notify Admins and Team
-        await notifyAdmins('System', `New project "${name}" created.`, `/projects/${newProject.rows[0].id}`);
-        await notifyTeam(teamId, 'System', `New project "${name}" has been created!`, `/projects/${newProject.rows[0].id}`);
+        // Notify Admins & Leads
+        const contextPath = isPowerHourBool ? 'power-hour-projects' : 'projects';
+        await notifyAdminsAndLeads(
+            teamId,
+            'ProjectCreated',
+            `New project "${name}" created for ${rows[0].team_name || 'your team'}.`,
+            `/${contextPath}/${rows[0].id}`
+        );
 
-        res.status(201).json(newProject.rows[0]);
+        res.status(201).json(rows[0]);
     } catch (error) {
         next(error);
     }

@@ -62,6 +62,7 @@ const Notifications = () => {
             'All': notifications,
             'Sprints': [],
             'Tasks': [],
+            'Projects': [],
             'Reports': [],
             'System': []
         };
@@ -70,21 +71,24 @@ const Notifications = () => {
             const type = n.type || 'System';
             if (type.includes('Sprint')) groups['Sprints'].push(n);
             else if (type.includes('Task')) groups['Tasks'].push(n);
+            else if (type.includes('Project')) groups['Projects'].push(n);
             else if (type.includes('Report')) groups['Reports'].push(n);
             else groups['System'].push(n);
         });
 
         // Only show tabs that have items, keep 'All' regardless
-        const activeTabs = ['All', ...['Sprints', 'Tasks', 'Reports', 'System'].filter(k => groups[k].length > 0)];
+        const activeTabs = ['All', ...['Sprints', 'Tasks', 'Projects', 'Reports', 'System'].filter(k => groups[k].length > 0)];
 
         return { categorized: groups, tabs: activeTabs };
     }, [notifications]);
 
     const getIconForType = (type) => {
         if (type.includes('Sprint')) return <Clock className="w-5 h-5 text-purple-500" />;
-        if (type.includes('TaskAssigned')) return <Package className="w-5 h-5 text-blue-500" />;
-        if (type.includes('TaskUpdated')) return <LayoutDashboard className="w-5 h-5 text-orange-500" />;
-        if (type.includes('Task')) return <CheckCircle className="w-5 h-5 text-green-500" />;
+        if (type === 'TaskAssigned') return <Package className="w-5 h-5 text-blue-500" />;
+        if (type === 'TaskCreated') return <CheckCircle className="w-5 h-5 text-emerald-500" />;
+        if (type === 'TaskStatus') return <ShieldAlert className="w-5 h-5 text-amber-500" />;
+        if (type === 'TaskUpdated') return <LayoutDashboard className="w-5 h-5 text-orange-500" />;
+        if (type.includes('Project')) return <FolderKanban className="w-5 h-5 text-indigo-500" />;
         if (type.includes('Report')) return <ShieldAlert className="w-5 h-5 text-indigo-500" />;
         if (type.includes('System')) return <Users className="w-5 h-5 text-slate-500" />;
         return <Bell className="w-5 h-5 text-slate-500" />;
