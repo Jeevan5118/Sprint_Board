@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
-import { Bell, Check, Clock, ShieldAlert, CheckCircle, Package, Users, LayoutDashboard, Loader2 } from 'lucide-react';
+import { Bell, Check, Clock, ShieldAlert, CheckCircle, Package, Users, LayoutDashboard, Loader2, FolderKanban } from 'lucide-react';
 
 const Notifications = () => {
     const { user } = useAuth();

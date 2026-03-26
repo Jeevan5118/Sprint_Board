@@ -54,7 +54,7 @@ export const notifyTeam = async (teamId, type, message, linkUrl = null) => {
 export const notifyTeamLeads = async (teamId, type, message, linkUrl = null) => {
     try {
         const { rows } = await db.query(
-            "SELECT user_id FROM team_members WHERE team_id = $1 AND role = 'Team Lead'", 
+            "SELECT tm.user_id FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.role = 'Team Lead'", 
             [teamId]
         );
         for (const lead of rows) {
