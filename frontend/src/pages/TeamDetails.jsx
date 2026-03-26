@@ -45,7 +45,7 @@ const TeamDetails = () => {
     useEffect(() => {
         fetchData();
         if (user?.role === 'Admin') fetchAllUsers();
-    }, [teamId]);
+    }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRemoveMember = async (memberId) => {
         if (!window.confirm('Remove this member from the team?')) return;

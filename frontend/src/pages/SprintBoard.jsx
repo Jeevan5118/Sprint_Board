@@ -77,14 +77,14 @@ const SprintBoard = () => {
                 const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}`);
                 setTasks(taskRes.data);
             }
-        } catch (error) {
+        } catch {
             toast.error('Failed to load Sprint data');
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchSprintData(); }, [teamId]);
+    useEffect(() => { fetchSprintData(); }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleTaskSaved = (savedTask, isEdit) => {
         if (isEdit) {
@@ -145,7 +145,7 @@ const SprintBoard = () => {
                 sprint_id: activeSprint.id
             });
             toast.success('Task moved');
-        } catch (error) {
+        } catch {
             toast.error('Failed to move task');
             setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: sourceStatus } : t));
         }
@@ -157,8 +157,8 @@ const SprintBoard = () => {
             await api.delete(`/teams/${teamId}/tasks/${taskId}`);
             setTasks(prev => prev.filter(t => t.id !== taskId));
             toast.success('Task deleted');
-        } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to delete task');
+        } catch {
+            toast.error('Failed to delete task');
         }
     };
 

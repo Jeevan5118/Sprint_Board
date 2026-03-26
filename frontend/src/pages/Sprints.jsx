@@ -24,14 +24,14 @@ const Sprints = () => {
             ]);
             setTeam(teamRes.data);
             setSprints(sprintsRes.data);
-        } catch (err) {
+        } catch {
             toast.error('Failed to load sprint data');
         } finally {
             setIsLoading(false);
         }
     };
 
-    useEffect(() => { fetchData(); }, [teamId]);
+    useEffect(() => { fetchData(); }, [teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleCreateSprint = async (e) => {
         e.preventDefault();

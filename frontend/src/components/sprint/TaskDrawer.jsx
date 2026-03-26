@@ -23,14 +23,12 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const [loadingData, setLoadingData] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [previewFile, setPreviewFile] = useState(null);
-
     useEffect(() => {
         if (!isOpen || !task || !teamId) return;
 
         const fetchData = async () => {
             try {
                 setLoadingData(true);
-                // Basic data needed for dropdowns
                 const [memRes, projRes] = await Promise.all([
                     api.get(`/teams/${teamId}/members`),
                     api.get(`/teams/${teamId}/projects`)
@@ -63,7 +61,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
         };
 
         fetchData();
-    }, [isOpen, task?.id, activeTab, teamId]);
+    }, [isOpen, task?.id, activeTab, teamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
@@ -91,9 +89,9 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
         try {
             const { data } = await api.post(`/teams/${teamId}/tasks/${task.id}/comments`, { content: newComment });
             setComments(prev => [...prev, data]);
-            setNewComment('');
+            if (onTaskUpdated) onTaskUpdated(data);
             toast.success("Comment posted");
-        } catch (err) {
+        } catch {
             toast.error("Failed to post comment");
         }
     };
@@ -103,11 +101,11 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
         if (!newLinkUrl.trim()) return;
         try {
             const { data } = await api.post(`/teams/${teamId}/tasks/${task.id}/links`, { title: newLinkTitle, url: newLinkUrl });
-            setLinks(prev => [data, ...prev]);
             setNewLinkTitle('');
             setNewLinkUrl('');
+            setLinks(prev => [data, ...prev]);
             toast.success("Link added");
-        } catch (err) {
+        } catch {
             toast.error("Failed to add link");
         }
     };
@@ -117,20 +115,11 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
             await api.delete(`/teams/${teamId}/tasks/${task.id}/links/${linkId}`);
             setLinks(prev => prev.filter(l => l.id !== linkId));
             toast.success("Link removed");
-        } catch (err) {
+        } catch {
             toast.error("Failed to remove link");
         }
     };
 
-    const handleUpdateField = async (field, value) => {
-        try {
-            const { data } = await api.put(`/teams/${teamId}/tasks/${task.id}`, { [field]: value });
-            if (onTaskUpdated) onTaskUpdated(data);
-            toast.success("Task updated");
-        } catch (err) {
-            toast.error("Failed to update task");
-        }
-    };
 
     if (!isOpen || !task) return null;
 

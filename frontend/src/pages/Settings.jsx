@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import FilePreviewModal from '../components/common/FilePreviewModal';
+import { getAbsoluteFileUrl } from '../utils/fileUtils';
 
 const Settings = () => {
     const { user, updateUser } = useAuth();
@@ -74,7 +75,7 @@ const Settings = () => {
     const handleAdminTabClick = async () => {
         setActiveTab('admin_users');
         if (teams.length === 0) {
-            try { const res = await api.get('/teams'); setTeams(res.data); } catch { }
+            try { const res = await api.get('/teams'); setTeams(res.data); } catch { /* ignore */ }
         }
     };
 
@@ -97,7 +98,7 @@ const Settings = () => {
 
             // Also fetch audit data if filtering for reports
             if (type === 'Today') fetchReportAudit(date);
-        } catch (err) {
+        } catch {
             toast.error('Failed to fetch global reports');
         } finally {
             setIsLoadingReports(false);
@@ -476,7 +477,7 @@ const Settings = () => {
                                                     </div>
                                                     <div className="flex items-center space-x-4">
                                                         <div className="flex -space-x-2">
-                                                            {reports.slice(0, 3).map((r, i) => (
+                                                            {reports.slice(0, 3).map((r) => (
                                                                 <div key={r.id} className={`w-7 h-7 rounded-lg border-2 border-white flex items-center justify-center text-white ${r.file_type === 'Report' ? 'bg-emerald-500' : 'bg-blue-500'}`} title={r.file_name}>
                                                                     <FileText className="w-3.5 h-3.5" />
                                                                 </div>

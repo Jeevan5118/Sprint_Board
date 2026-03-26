@@ -32,7 +32,7 @@ const ProjectDetails = () => {
                     const tasksRes = await api.get(`/teams/${found.team_id}/tasks`);
                     setTasks(tasksRes.data.filter(t => t.project_id === found.id));
                 }
-            } catch (err) {
+            } catch {
                 toast.error('Failed to load project details');
             } finally {
                 setIsLoading(false);

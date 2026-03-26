@@ -102,7 +102,7 @@ const Dashboard = () => {
             ]);
             setData(dashRes.data);
             setRecentUploads(uploadsRes.data);
-        } catch (err) {
+        } catch {
             toast.error('Failed to load dashboard data');
         } finally {
             setIsLoading(false);

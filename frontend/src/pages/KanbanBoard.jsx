@@ -76,7 +76,7 @@ const KanbanBoard = () => {
                 const limMap = {};
                 data.limits.forEach(l => limMap[l.status_name] = l.wip_limit);
                 setLimits(limMap);
-            } catch (error) {
+            } catch {
                 toast.error('Failed to load Kanban Board');
             } finally {
                 setLoading(false);

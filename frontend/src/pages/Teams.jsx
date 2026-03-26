@@ -18,7 +18,7 @@ const Teams = () => {
         try {
             const { data } = await api.get('/teams');
             setTeams(data);
-        } catch (err) {
+        } catch {
             toast.error('Failed to load teams');
         } finally {
             setIsLoading(false);

@@ -31,7 +31,7 @@ const Navbar = ({ onMenuClick }) => {
         try {
             await api.put('/notifications/read-all');
             setNotifications(notifications.map(n => ({ ...n, is_read: true })));
-        } catch (error) {
+        } catch {
             console.error("Failed to mark all as read");
         }
     };
@@ -40,7 +40,7 @@ const Navbar = ({ onMenuClick }) => {
         try {
             await api.put(`/notifications/${id}/read`);
             setNotifications(notifications.map(n => n.id === id ? { ...n, is_read: true } : n));
-        } catch (error) {
+        } catch {
             console.error("Failed to mark notification as read");
         }
     };

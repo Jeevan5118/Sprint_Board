@@ -30,7 +30,7 @@ const Projects = () => {
             ]);
             setTeams(teamsRes.data);
             setProjects(projectsRes.data);
-        } catch (err) {
+        } catch {
             toast.error('Failed to load projects');
         } finally {
             setIsLoading(false);
@@ -44,7 +44,7 @@ const Projects = () => {
         if (!form.team_id) { toast.error('Please select a team'); return; }
         setIsSubmitting(true);
         try {
-            const { data } = await api.post(`/teams/${form.team_id}/projects`, {
+            await api.post(`/teams/${form.team_id}/projects`, {
                 name: form.name,
                 description: form.description
             });
