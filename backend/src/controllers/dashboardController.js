@@ -7,7 +7,6 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const isMember = req.user.role === 'Member';
 
         const { is_power_hour } = req.query;
-        const { is_power_hour } = req.query;
         const isPowerHourBool = is_power_hour === 'true' || is_power_hour === true;
 
         // 1. Overall Metrics
