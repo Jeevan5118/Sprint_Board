@@ -1,14 +1,6 @@
 {
     "rewrites": [
         {
-            "source": "/api/v1/:path*",
-            "destination": "https://sprint-board-unified.onrender.com/api/v1/:path*"
-        },
-        {
-            "source": "/api/debug/:path*",
-            "destination": "https://sprint-board-unified.onrender.com/api/v1/debug/:path*"
-        },
-        {
             "source": "/(.*)",
             "destination": "/frontend/index.html"
         }
