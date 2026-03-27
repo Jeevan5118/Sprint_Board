@@ -96,15 +96,45 @@ const Dashboard = ({ isPowerHour = false }) => {
     const [isUploadingWork, setIsUploadingWork] = useState(false);
     const [recentUploads, setRecentUploads] = useState([]);
 
+    const normalizeDashboardData = (raw) => ({
+        analytics: {
+            totalTasks: Number(raw?.analytics?.totalTasks || 0),
+            completed: Number(raw?.analytics?.completed || 0),
+            pending: Number(raw?.analytics?.pending || 0),
+            progress: Number(raw?.analytics?.progress || 0),
+            avgLeadTime: raw?.analytics?.avgLeadTime ?? '0.0',
+            throughput: Number(raw?.analytics?.throughput || 0),
+        },
+        teams: Array.isArray(raw?.teams) ? raw.teams : [],
+        alerts: Array.isArray(raw?.alerts) ? raw.alerts : [],
+        timeline: Array.isArray(raw?.timeline) ? raw.timeline : [],
+    });
+
     const fetchDashboard = async () => {
+        setIsLoading(true);
         try {
-            const [dashRes, uploadsRes] = await Promise.all([
+            const [dashResult, uploadsResult] = await Promise.allSettled([
                 api.get(`/dashboard/analytics?is_power_hour=${isPowerHour}`),
                 api.get('/reports')
             ]);
-            setData(dashRes.data);
-            setRecentUploads(uploadsRes.data);
-        } catch {
+
+            if (dashResult.status === 'fulfilled') {
+                setData(normalizeDashboardData(dashResult.value.data));
+            } else {
+                setData(null);
+                toast.error('Failed to load dashboard data');
+            }
+
+            if (uploadsResult.status === 'fulfilled' && Array.isArray(uploadsResult.value.data)) {
+                setRecentUploads(uploadsResult.value.data);
+            } else {
+                setRecentUploads([]);
+                console.error('Uploads fetch failed:', uploadsResult.status === 'rejected' ? uploadsResult.reason : 'Invalid response');
+            }
+        } catch (err) {
+            console.error('Dashboard fetch failed:', err);
+            setData(null);
+            setRecentUploads([]);
             toast.error('Failed to load dashboard data');
         } finally {
             setIsLoading(false);

@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { errorHandler } from './middlewares/errorHandler.js';
 import routes from './routes/index.js';
+import { ensureSchemaReady } from './config/db.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,13 +19,25 @@ const app = express();
 
 // Middlewares
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: function(origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, Postman)
+        // And allow any browser origin (reflects it back so credentials work)
+        callback(null, origin || '*');
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(async (req, res, next) => {
+    try {
+        await ensureSchemaReady;
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
 
 // API Debug Routes (Temporary)
 app.get('/api/v1/debug/reconcile', reconcileData);

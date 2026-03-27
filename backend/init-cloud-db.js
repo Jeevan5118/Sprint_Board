@@ -84,6 +84,20 @@ const runMigration = async () => {
                     metadata JSONB,
                     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+
+                -- 5. Power Hour compatibility columns
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                               WHERE table_name='projects' AND column_name='is_power_hour') THEN
+                    ALTER TABLE projects ADD COLUMN is_power_hour BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                               WHERE table_name='sprints' AND column_name='is_power_hour') THEN
+                    ALTER TABLE sprints ADD COLUMN is_power_hour BOOLEAN DEFAULT FALSE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                               WHERE table_name='tasks' AND column_name='is_power_hour') THEN
+                    ALTER TABLE tasks ADD COLUMN is_power_hour BOOLEAN DEFAULT FALSE;
+                END IF;
             END $$;
         `);
         console.log("✅ Schema patches and internal storage tables verified.");
