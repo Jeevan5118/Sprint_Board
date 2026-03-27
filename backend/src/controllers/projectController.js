@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { notifyAdmins, notifyTeam, notifyAdminsAndLeads } from '../services/notificationService.js';
+import { notifyAdminsAndLeads } from '../services/notificationService.js';
 
 export const getAllProjects = async (req, res, next) => {
     try {
@@ -50,8 +50,21 @@ export const getProjectsByTeam = async (req, res, next) => {
 
 export const deleteProject = async (req, res, next) => {
     try {
-        const { id } = req.params;
-        await db.query('DELETE FROM projects WHERE id = $1', [id]);
+        const { id, teamId } = req.params;
+        const { rows } = await db.query('DELETE FROM projects WHERE id = $1 RETURNING *', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Project not found' });
+
+        const deletedProject = rows[0];
+        const contextPath = deletedProject.is_power_hour ? 'power-hour-projects' : 'projects';
+        const { rows: actorRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        await notifyAdminsAndLeads(
+            teamId || deletedProject.team_id,
+            'ProjectDeleted',
+            `Project "${deletedProject.name}" was deleted by ${actorRows[0]?.name || 'a user'}.`,
+            `/${contextPath}`,
+            { excludeUserId: req.user.id }
+        );
+
         res.json({ message: 'Project deleted' });
     } catch (error) { next(error); }
 };
@@ -76,7 +89,8 @@ export const createProject = async (req, res, next) => {
             teamId,
             'ProjectCreated',
             `New project "${name}" created for ${rows[0].team_name || 'your team'}.`,
-            `/${contextPath}/${rows[0].id}`
+            `/${contextPath}/${rows[0].id}`,
+            { excludeUserId: req.user.id }
         );
 
         res.status(201).json(rows[0]);

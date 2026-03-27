@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { createNotification, notifyAdmins, notifyAdminsAndLeads } from '../services/notificationService.js';
+import { createNotification, notifyAdminsAndLeads, notifyUsers } from '../services/notificationService.js';
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
 export const getTasks = async (req, res, next) => {
@@ -159,7 +159,8 @@ export const createTask = async (req, res, next) => {
             teamId,
             'TaskCreated',
             `New task "${title}" created by ${creatorRow[0]?.name || 'a user'}.`,
-            link
+            link,
+            { excludeUserId: req.user.id }
         );
 
         res.status(201).json(newTask.rows[0]);
@@ -208,6 +209,20 @@ export const updateTask = async (req, res, next) => {
                 'TaskUpdated',
                 `You were assigned to an existing task: ${rows[0].title}`,
                 link
+            );
+        }
+
+        const changedKeys = Object.keys(updates).filter(k => !['id', 'team_id', 'creator_id', 'created_at', 'updated_at', 'status', 'sort_order'].includes(k));
+        if (changedKeys.length > 0) {
+            const contextPath = rows[0].is_power_hour ? 'power-hour-teams' : 'teams';
+            const link = rows[0].sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+            const { rows: actorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+            await notifyAdminsAndLeads(
+                teamId,
+                'TaskUpdated',
+                `Task "${rows[0].title}" was updated by ${actorRow[0]?.name || 'a user'}.`,
+                link,
+                { excludeUserId: req.user.id }
             );
         }
 
@@ -298,6 +313,30 @@ export const deleteTask = async (req, res, next) => {
         // Role check (Admin or Team Lead only) is done in routes
         const { rows } = await db.query('DELETE FROM tasks WHERE id = $1 AND team_id = $2 RETURNING *', [id, teamId]);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
+
+        const deletedTask = rows[0];
+        const contextPath = deletedTask.is_power_hour ? 'power-hour-teams' : 'teams';
+        const link = deletedTask.sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+        const { rows: actorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const actor = actorRow[0]?.name || 'a user';
+
+        await notifyAdminsAndLeads(
+            teamId,
+            'TaskDeleted',
+            `Task "${deletedTask.title}" was deleted by ${actor}.`,
+            link,
+            { excludeUserId: req.user.id }
+        );
+
+        if (deletedTask.assignee_id && deletedTask.assignee_id !== req.user.id) {
+            await notifyUsers(
+                [deletedTask.assignee_id],
+                'TaskDeleted',
+                `Task "${deletedTask.title}" assigned to you was deleted by ${actor}.`,
+                link
+            );
+        }
+
         res.json({ message: 'Task deleted successfully', task: rows[0] });
     } catch (error) { next(error); }
 };

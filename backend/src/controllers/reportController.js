@@ -27,9 +27,9 @@ export const submitReport = async (req, res, next) => {
         // Notify Admins and Team Leads
         const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const uName = userRows[0]?.name || 'A user';
-        await notifyAdmins('Reports', `${uName} submitted their daily report.`, `/settings`);
+        await notifyAdmins('Reports', `${uName} submitted their daily report.`, `/settings`, { excludeUserId: userId });
         if (teamId) {
-            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted their daily report.`, `/settings`);
+            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted their daily report.`, `/settings`, { excludeUserId: userId });
         }
 
         res.status(200).json({
@@ -63,9 +63,9 @@ export const uploadWork = async (req, res, next) => {
         // Notify Admins and Team Leads
         const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const uName = userRows[0]?.name || 'A user';
-        await notifyAdmins('Reports', `${uName} submitted work.`, `/settings`);
+        await notifyAdmins('Reports', `${uName} submitted work.`, `/settings`, { excludeUserId: userId });
         if (teamId) {
-            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted work.`, `/settings`);
+            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted work.`, `/settings`, { excludeUserId: userId });
         }
 
         res.status(200).json({

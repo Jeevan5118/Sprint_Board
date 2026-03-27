@@ -31,7 +31,8 @@ export const createSprint = async (req, res, next) => {
             teamId,
             'SprintCreated',
             `New sprint "${name}" created for ${rows[0].team_name || 'your team'}.`,
-            `/${contextPath}/${teamId}/sprints`
+            `/${contextPath}/${teamId}/sprints`,
+            { excludeUserId: req.user.id }
         );
 
         res.status(201).json(rows[0]);
@@ -62,8 +63,8 @@ export const startSprint = async (req, res, next) => {
 
         // Notify Admins and Team
         const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
-        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been started.`, `/${contextPath}/${teamId}/sprints`);
-        await notifyTeam(teamId, 'Sprints', `Sprint "${rows[0].name}" has started!`, `/${contextPath}/${teamId}/sprint-board`);
+        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been started.`, `/${contextPath}/${teamId}/sprints`, { excludeUserId: req.user.id });
+        await notifyTeam(teamId, 'Sprints', `Sprint "${rows[0].name}" has started!`, `/${contextPath}/${teamId}/sprint-board`, { excludeUserId: req.user.id });
 
         res.json(rows[0]);
     } catch (error) {
@@ -82,8 +83,8 @@ export const completeSprint = async (req, res, next) => {
 
         // Notify Admins and Team
         const contextPath = rows[0].is_power_hour ? 'power-hour-teams' : 'teams';
-        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been completed.`, `/${contextPath}/${rows[0].team_id}/sprints`);
-        await notifyTeam(rows[0].team_id, 'Sprints', `Sprint "${rows[0].name}" has been completed.`, `/${contextPath}/${rows[0].team_id}/sprints`);
+        await notifyAdmins('Sprints', `Sprint "${rows[0].name}" has been completed.`, `/${contextPath}/${rows[0].team_id}/sprints`, { excludeUserId: req.user.id });
+        await notifyTeam(rows[0].team_id, 'Sprints', `Sprint "${rows[0].name}" has been completed.`, `/${contextPath}/${rows[0].team_id}/sprints`, { excludeUserId: req.user.id });
 
         res.json(rows[0]);
     } catch (error) {

@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { notifyAdmins, createNotification } from '../services/notificationService.js';
+import { notifyAdmins, notifyAdminsAndLeads, notifyUsers, createNotification } from '../services/notificationService.js';
 
 export const getTeams = async (req, res, next) => {
     try {
@@ -101,6 +101,23 @@ export const addTeamMember = async (req, res, next) => {
             'INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
             [teamId, user_id]
         );
+
+        const { rows: teamRows } = await db.query('SELECT name FROM teams WHERE id = $1', [teamId]);
+        const teamName = teamRows[0]?.name || 'the team';
+        const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [user_id]);
+        const memberName = userRows[0]?.name || 'A user';
+        const { rows: actorRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const actor = actorRows[0]?.name || 'a user';
+
+        await notifyUsers([user_id], 'TeamMemberAdded', `You were added to ${teamName}.`, `/teams/${teamId}`);
+        await notifyAdminsAndLeads(
+            teamId,
+            'TeamMemberAdded',
+            `${memberName} was added to ${teamName} by ${actor}.`,
+            `/teams/${teamId}`,
+            { excludeUserId: req.user.id }
+        );
+
         res.status(201).json({ message: 'Member added' });
     } catch (error) { next(error); }
 };
@@ -108,7 +125,23 @@ export const addTeamMember = async (req, res, next) => {
 export const removeTeamMember = async (req, res, next) => {
     try {
         const { teamId, userId } = req.params;
+        const { rows: teamRows } = await db.query('SELECT name FROM teams WHERE id = $1', [teamId]);
+        const teamName = teamRows[0]?.name || 'the team';
+        const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
+        const memberName = userRows[0]?.name || 'A user';
+        const { rows: actorRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const actor = actorRows[0]?.name || 'a user';
+
         await db.query('DELETE FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
+        await notifyUsers([userId], 'TeamMemberRemoved', `You were removed from ${teamName}.`, '/teams');
+        await notifyAdminsAndLeads(
+            teamId,
+            'TeamMemberRemoved',
+            `${memberName} was removed from ${teamName} by ${actor}.`,
+            `/teams/${teamId}`,
+            { excludeUserId: req.user.id }
+        );
+
         res.json({ message: 'Member removed' });
     } catch (error) { next(error); }
 };
@@ -133,6 +166,13 @@ export const promoteToLead = async (req, res, next) => {
         if (userRows.length > 0 && teamRows.length > 0) {
             await notifyAdmins('System', `${userRows[0].name} was promoted to Team Lead for ${teamRows[0].name}.`, `/teams/${teamId}`);
             await createNotification(userId, 'System', `You have been promoted to Team Lead for ${teamRows[0].name}.`, `/teams/${teamId}`);
+            await notifyAdminsAndLeads(
+                teamId,
+                'TeamLeadUpdated',
+                `${userRows[0].name} is now Team Lead for ${teamRows[0].name}.`,
+                `/teams/${teamId}`,
+                { excludeUserId: req.user.id }
+            );
         }
 
         res.json({ message: 'User promoted to Team Lead' });
@@ -174,8 +214,15 @@ export const getAllUsers = async (req, res, next) => {
 export const deleteTeam = async (req, res, next) => {
     try {
         const { teamId } = req.params;
+        const { rows: actorRows } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
         const { rows } = await db.query('DELETE FROM teams WHERE id = $1 RETURNING *', [teamId]);
         if (rows.length === 0) return res.status(404).json({ message: 'Team not found' });
+        await notifyAdmins(
+            'TeamDeleted',
+            `Team "${rows[0].name}" was deleted by ${actorRows[0]?.name || 'a user'}.`,
+            '/teams',
+            { excludeUserId: req.user.id }
+        );
         res.json({ message: 'Team deleted successfully', team: rows[0] });
     } catch (error) {
         console.error('Delete Team Error:', error);

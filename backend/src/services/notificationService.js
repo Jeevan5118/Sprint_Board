@@ -20,15 +20,45 @@ export const createNotification = async (userId, type, message, linkUrl = null) 
     }
 };
 
+const createNotificationsBulk = async (userIds, type, message, linkUrl = null, options = {}) => {
+    try {
+        const { excludeUserId = null } = options;
+        const deduped = [...new Set((userIds || []).filter(Boolean))].filter((id) => id !== excludeUserId);
+        if (deduped.length === 0 || !type || !message) return;
+
+        await Promise.all(deduped.map((id) => createNotification(id, type, message, linkUrl)));
+    } catch (error) {
+        console.error('Failed to create bulk notifications:', error);
+    }
+};
+
+const getAdminIds = async () => {
+    const { rows } = await db.query("SELECT id FROM users WHERE role = 'Admin'");
+    return rows.map((r) => r.id);
+};
+
+const getTeamMemberIds = async (teamId) => {
+    if (!teamId) return [];
+    const { rows } = await db.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
+    return rows.map((r) => r.user_id);
+};
+
+const getTeamLeadIds = async (teamId) => {
+    if (!teamId) return [];
+    const { rows } = await db.query(
+        "SELECT tm.user_id FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.role = 'Team Lead'",
+        [teamId]
+    );
+    return rows.map((r) => r.user_id);
+};
+
 /**
  * Broadcasts a notification to all Admin users
  */
-export const notifyAdmins = async (type, message, linkUrl = null) => {
+export const notifyAdmins = async (type, message, linkUrl = null, options = {}) => {
     try {
-        const { rows } = await db.query("SELECT id FROM users WHERE role = 'Admin'");
-        for (const admin of rows) {
-            await createNotification(admin.id, type, message, linkUrl);
-        }
+        const adminIds = await getAdminIds();
+        await createNotificationsBulk(adminIds, type, message, linkUrl, options);
     } catch (error) {
         console.error('Failed to notify admins:', error);
     }
@@ -37,12 +67,10 @@ export const notifyAdmins = async (type, message, linkUrl = null) => {
 /**
  * Broadcasts a notification to all members of a specific team
  */
-export const notifyTeam = async (teamId, type, message, linkUrl = null) => {
+export const notifyTeam = async (teamId, type, message, linkUrl = null, options = {}) => {
     try {
-        const { rows } = await db.query('SELECT user_id FROM team_members WHERE team_id = $1', [teamId]);
-        for (const member of rows) {
-            await createNotification(member.user_id, type, message, linkUrl);
-        }
+        const memberIds = await getTeamMemberIds(teamId);
+        await createNotificationsBulk(memberIds, type, message, linkUrl, options);
     } catch (error) {
         console.error('Failed to notify team:', error);
     }
@@ -51,15 +79,10 @@ export const notifyTeam = async (teamId, type, message, linkUrl = null) => {
 /**
  * Broadcasts a notification ONLY to Team Leads of a specific team
  */
-export const notifyTeamLeads = async (teamId, type, message, linkUrl = null) => {
+export const notifyTeamLeads = async (teamId, type, message, linkUrl = null, options = {}) => {
     try {
-        const { rows } = await db.query(
-            "SELECT tm.user_id FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.role = 'Team Lead'", 
-            [teamId]
-        );
-        for (const lead of rows) {
-            await createNotification(lead.user_id, type, message, linkUrl);
-        }
+        const leadIds = await getTeamLeadIds(teamId);
+        await createNotificationsBulk(leadIds, type, message, linkUrl, options);
     } catch (error) {
         console.error('Failed to notify team leads:', error);
     }
@@ -68,29 +91,18 @@ export const notifyTeamLeads = async (teamId, type, message, linkUrl = null) => 
 /**
  * Broadcasts to both Admins AND the Team Leads of a specific team
  */
-export const notifyAdminsAndLeads = async (teamId, type, message, linkUrl = null) => {
+export const notifyAdminsAndLeads = async (teamId, type, message, linkUrl = null, options = {}) => {
     try {
-        const recipientIds = new Set();
-
-        const { rows: admins } = await db.query("SELECT id FROM users WHERE role = 'Admin'");
-        for (const admin of admins) {
-            recipientIds.add(admin.id);
-        }
-
-        if (teamId) {
-            const { rows: teamLeads } = await db.query(
-                "SELECT tm.user_id FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.role = 'Team Lead'",
-                [teamId]
-            );
-            for (const lead of teamLeads) {
-                recipientIds.add(lead.user_id);
-            }
-        }
-
-        for (const userId of recipientIds) {
-            await createNotification(userId, type, message, linkUrl);
-        }
+        const [adminIds, leadIds] = await Promise.all([getAdminIds(), getTeamLeadIds(teamId)]);
+        await createNotificationsBulk([...adminIds, ...leadIds], type, message, linkUrl, options);
     } catch (error) {
         console.error('Failed to notify admins and leads:', error);
     }
+};
+
+/**
+ * Notify arbitrary set of users with automatic dedupe.
+ */
+export const notifyUsers = async (userIds, type, message, linkUrl = null, options = {}) => {
+    await createNotificationsBulk(userIds, type, message, linkUrl, options);
 };
