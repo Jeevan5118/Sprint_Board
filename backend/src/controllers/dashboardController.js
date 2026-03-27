@@ -6,8 +6,14 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const isAdmin = req.user.role === 'Admin';
         const isMember = req.user.role === 'Member';
 
-        const { is_power_hour } = req.query;
-        const isPowerHourBool = is_power_hour === 'true' || is_power_hour === true;
+        const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+
+        // Build params: always [isPowerHourBool] for admin, [isPowerHourBool, userId] for others
+        const baseParams = isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId];
+        const userFilter = isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)';
+        const memberFilter = isMember ? 'AND t.assignee_id = $2' : '';
+        const teamMemberJoin = isAdmin ? '' : 'JOIN team_members tm ON t.id = tm.team_id WHERE tm.user_id = $2';
+        const memberTaskFilter = isMember ? 'AND tk.assignee_id = $2' : '';
 
         // 1. Overall Metrics
         const statsQuery = `
@@ -19,11 +25,10 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as weekly_throughput
             FROM tasks t
             WHERE (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
-            ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'}
-            ${isMember ? 'AND t.assignee_id = $2' : ''}
+            ${userFilter}
+            ${memberFilter}
         `;
-        const statsParams = isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId];
-        const statsRes = await db.query(statsQuery, statsParams);
+        const statsRes = await db.query(statsQuery, baseParams);
         const s = statsRes.rows[0];
 
         // 2. Team-wise Analytics
@@ -38,30 +43,29 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(tk.id) FILTER (WHERE tk.status = 'Done' AND tk.updated_at > NOW() - INTERVAL '7 days') as throughput
             FROM teams t
             LEFT JOIN tasks tk ON t.id = tk.team_id AND (tk.is_power_hour = $1 OR (tk.is_power_hour IS NULL AND $1 = false))
-            ${isAdmin ? '' : 'JOIN team_members tm ON t.id = tm.team_id WHERE tm.user_id = $2'}
-            ${isMember ? 'AND tk.assignee_id = $2' : ''}
+            ${teamMemberJoin}
+            ${memberTaskFilter}
             GROUP BY t.id, t.name
             ORDER BY t.name
         `;
-        const teamStatsParams = isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId];
-        const teamsRes = await db.query(teamStatsQuery, teamStatsParams);
+        const teamsRes = await db.query(teamStatsQuery, baseParams);
 
         // 3. Alerts & Timeline
         const overdueRes = await db.query(
             `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' 
              AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
-             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'} 
+             ${userFilter.replace('team_id IN', 'team_id IN')} 
              ${isMember ? 'AND assignee_id = $2' : ''} 
              ORDER BY due_date ASC LIMIT 5`,
-            isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId]
+            baseParams
         );
         const upcomingRes = await db.query(
             `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' 
              AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
-             ${isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'} 
+             ${userFilter} 
              ${isMember ? 'AND assignee_id = $2' : ''} 
              ORDER BY due_date ASC LIMIT 5`,
-            isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId]
+            baseParams
         );
         const activityRes = await db.query(
             `SELECT c.id, c.content, u.name as actor, c.created_at, t.title as task_title
@@ -72,9 +76,8 @@ export const getDashboardAnalytics = async (req, res, next) => {
              ${isAdmin ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'}
              ${isMember ? 'AND t.assignee_id = $2' : ''}
              ORDER BY c.created_at DESC LIMIT 8`,
-            isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId]
+            baseParams
         );
-        console.log(`[VERIFIED_V2] Dashboard activity filtered for ${req.user.role} ${userId}`);
 
         res.json({
             analytics: {
