@@ -27,8 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // API Debug Routes (Temporary)
-app.get('/api/debug/reconcile', reconcileData);
-app.get('/api/version', (req, res) => res.json({ version: '1.0.9-hardened-final', timestamp: '2026-03-26-1928' }));
+app.get('/api/v1/debug/reconcile', reconcileData);
+app.get('/api/v1/version', (req, res) => res.json({ version: '1.0.9-hardened-final', timestamp: '2026-03-27-1010' }));
 
 // API Routes
 app.use('/api/v1', routes);
