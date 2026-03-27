@@ -201,7 +201,8 @@ export const updateTask = async (req, res, next) => {
 
         // Logic 14: Notify user of the assignment specifically if the assignee ID was changed
         if (updates.assignee_id && updates.assignee_id !== req.user.id) {
-            const link = rows[0].sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
+            const contextPath = rows[0].is_power_hour ? 'power-hour-teams' : 'teams';
+            const link = rows[0].sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
             await createNotification(
                 updates.assignee_id,
                 'TaskUpdated',

@@ -19,15 +19,16 @@ export const addComment = async (req, res, next) => {
         );
 
         // Fetch task assignee
-        const taskRes = await db.query('SELECT title, assignee_id FROM tasks WHERE id = $1', [taskId]);
+        const taskRes = await db.query('SELECT title, assignee_id, is_power_hour FROM tasks WHERE id = $1', [taskId]);
         if (taskRes.rows.length > 0) {
-            const { title, assignee_id } = taskRes.rows[0];
+            const { title, assignee_id, is_power_hour } = taskRes.rows[0];
             if (assignee_id && assignee_id !== userId) {
+                const contextPath = is_power_hour ? 'power-hour-teams' : 'teams';
                 await createNotification(
                     assignee_id,
                     'CommentAdded',
                     `New comment on task: ${title}`,
-                    `/teams/${teamId}/sprints`
+                    `/${contextPath}/${teamId}/sprint-board`
                 );
             }
         }

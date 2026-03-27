@@ -70,11 +70,25 @@ export const notifyTeamLeads = async (teamId, type, message, linkUrl = null) => 
  */
 export const notifyAdminsAndLeads = async (teamId, type, message, linkUrl = null) => {
     try {
-        // Notify Admins
-        await notifyAdmins(type, message, linkUrl);
-        // Notify Team Leads
+        const recipientIds = new Set();
+
+        const { rows: admins } = await db.query("SELECT id FROM users WHERE role = 'Admin'");
+        for (const admin of admins) {
+            recipientIds.add(admin.id);
+        }
+
         if (teamId) {
-            await notifyTeamLeads(teamId, type, message, linkUrl);
+            const { rows: teamLeads } = await db.query(
+                "SELECT tm.user_id FROM team_members tm JOIN users u ON tm.user_id = u.id WHERE tm.team_id = $1 AND u.role = 'Team Lead'",
+                [teamId]
+            );
+            for (const lead of teamLeads) {
+                recipientIds.add(lead.user_id);
+            }
+        }
+
+        for (const userId of recipientIds) {
+            await createNotification(userId, type, message, linkUrl);
         }
     } catch (error) {
         console.error('Failed to notify admins and leads:', error);
