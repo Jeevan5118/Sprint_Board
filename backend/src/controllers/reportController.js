@@ -101,7 +101,7 @@ export const uploadWork = async (req, res, next) => {
  */
 export const getUploads = async (req, res, next) => {
     try {
-        const { type, teamId, startDate, endDate } = req.query;
+        const { type, teamId, startDate, endDate, fileName } = req.query;
         let query = `
             SELECT u.id, u.file_name, u.file_type, u.mimetype, u.uploaded_at, u.metadata, 
                    usr.name as user_name, t.name as team_name
@@ -154,6 +154,11 @@ export const getUploads = async (req, res, next) => {
         if (endDate) {
             params.push(endDate);
             query += ` AND u.uploaded_at <= $${params.length}`;
+        }
+
+        if (fileName) {
+            params.push(`%${fileName}%`);
+            query += ` AND u.file_name ILIKE $${params.length}`;
         }
 
         query += ' ORDER BY u.uploaded_at DESC';

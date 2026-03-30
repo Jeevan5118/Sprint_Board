@@ -34,7 +34,9 @@ const Settings = () => {
 
     // Global Reports & Audit State
     const [globalReports, setGlobalReports] = useState([]);
-    const [reportFilter, setReportFilter] = useState('Today'); // 'Today', 'Work'
+    const [reportFilter, setReportFilter] = useState('Report'); // 'Report', 'Work'
+    const [periodFilter, setPeriodFilter] = useState('day'); // 'day', 'week', 'month', 'year'
+    const [reportSearch, setReportSearch] = useState('');
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [auditData, setAuditData] = useState([]);
@@ -79,25 +81,53 @@ const Settings = () => {
         }
     };
 
-    const fetchGlobalReports = async (type = 'Today', date = selectedDate) => {
+    const getDateRange = (date, period) => {
+        const base = new Date(`${date}T00:00:00`);
+        const start = new Date(base);
+        const end = new Date(base);
+
+        if (period === 'week') {
+            const day = base.getDay(); // 0-6
+            const diffToMonday = (day + 6) % 7;
+            start.setDate(base.getDate() - diffToMonday);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (period === 'month') {
+            start.setDate(1);
+            end.setMonth(start.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (period === 'year') {
+            start.setMonth(0, 1);
+            end.setMonth(11, 31);
+            end.setHours(23, 59, 59, 999);
+        } else {
+            end.setHours(23, 59, 59, 999);
+        }
+
+        return {
+            startDate: start.toISOString(),
+            endDate: end.toISOString(),
+        };
+    };
+
+    const fetchGlobalReports = async (type = reportFilter, date = selectedDate, period = periodFilter, search = reportSearch) => {
         setIsLoadingReports(true);
         setReportFilter(type);
         try {
-            let params = {};
-            if (type === 'Today') {
-                params.type = 'Report';
-                params.startDate = date;
-                params.endDate = date + 'T23:59:59';
-            } else if (type === 'Work') {
-                params.type = 'Work';
-                params.startDate = date;
-                params.endDate = date + 'T23:59:59';
-            }
+            const { startDate, endDate } = getDateRange(date, period);
+            let params = {
+                type,
+                startDate,
+                endDate
+            };
+            if (search?.trim()) params.fileName = search.trim();
+
             const res = await api.get('/reports', { params });
             setGlobalReports(res.data);
 
             // Also fetch audit data if filtering for reports
-            if (type === 'Today') fetchReportAudit(date);
+            if (type === 'Report' && period === 'day') fetchReportAudit(date);
+            else setAuditData([]);
         } catch {
             toast.error('Failed to fetch global reports');
         } finally {
@@ -116,13 +146,13 @@ const Settings = () => {
 
     const handleGlobalReportsTabClick = () => {
         setActiveTab('global_reports');
-        fetchGlobalReports('Today', selectedDate);
+        fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch);
     };
 
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSelectedDate(newDate);
-        fetchGlobalReports(reportFilter, newDate);
+        fetchGlobalReports(reportFilter, newDate, periodFilter, reportSearch);
     };
 
     const toggleMemberExpand = (memberName) => {
@@ -201,7 +231,10 @@ const Settings = () => {
                         )}
                         {user?.role !== 'Admin' && (
                             <button
-                                onClick={() => setActiveTab('my_submissions')}
+                                onClick={() => {
+                                    setActiveTab('my_submissions');
+                                    fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+                                }}
                                 className={`flex-1 md:w-full flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap min-w-max ${activeTab === 'my_submissions' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-200'}`}
                             >
                                 <ArrowUpRight className="w-4 h-4 mr-3" /> My Submissions
@@ -380,15 +413,44 @@ const Settings = () => {
                                             className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
+                                    <select
+                                        value={periodFilter}
+                                        onChange={(e) => {
+                                            const p = e.target.value;
+                                            setPeriodFilter(p);
+                                            fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
+                                        }}
+                                        className="px-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
+                                    >
+                                        <option value="day">Day</option>
+                                        <option value="week">Week</option>
+                                        <option value="month">Month</option>
+                                        <option value="year">Year</option>
+                                    </select>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={reportSearch}
+                                            onChange={(e) => setReportSearch(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+                                            }}
+                                            placeholder="Search file name..."
+                                            className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
+                                        />
+                                    </div>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-emerald-100 shadow-sm">
                                         <button
-                                            onClick={() => fetchGlobalReports('Today', selectedDate)}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Today' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                            onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-600 hover:bg-emerald-50'}`}
                                         >
                                             Reports
                                         </button>
                                         <button
-                                            onClick={() => fetchGlobalReports('Work', selectedDate)}
+                                            onClick={() => fetchGlobalReports('Work', selectedDate, periodFilter, reportSearch)}
                                             className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50'}`}
                                         >
                                             Work
@@ -408,7 +470,7 @@ const Settings = () => {
                             ) : (
                                 <div className="space-y-6">
                                     {/* Submission Audit Summary (Only for Daily Reports) */}
-                                    {reportFilter === 'Today' && (
+                                    {reportFilter === 'Report' && periodFilter === 'day' && (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-emerald-200 transition-all">
                                                 <div className="flex items-center justify-between">
@@ -572,15 +634,44 @@ const Settings = () => {
                                             className="block w-full pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
+                                    <select
+                                        value={periodFilter}
+                                        onChange={(e) => {
+                                            const p = e.target.value;
+                                            setPeriodFilter(p);
+                                            fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
+                                        }}
+                                        className="px-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                    >
+                                        <option value="day">Day</option>
+                                        <option value="week">Week</option>
+                                        <option value="month">Month</option>
+                                        <option value="year">Year</option>
+                                    </select>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={reportSearch}
+                                            onChange={(e) => setReportSearch(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+                                            }}
+                                            placeholder="Search file name..."
+                                            className="block w-full pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                        />
+                                    </div>
                                     <div className="flex bg-white/50 p-1 rounded-xl border border-indigo-100 shadow-sm">
                                         <button
-                                            onClick={() => fetchGlobalReports('Today', selectedDate)}
-                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Today' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-600 hover:bg-indigo-50'}`}
+                                            onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
+                                            className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-600 hover:bg-indigo-50'}`}
                                         >
                                             Reports
                                         </button>
                                         <button
-                                            onClick={() => fetchGlobalReports('Work', selectedDate)}
+                                            onClick={() => fetchGlobalReports('Work', selectedDate, periodFilter, reportSearch)}
                                             className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50'}`}
                                         >
                                             Work
