@@ -243,6 +243,15 @@ export const updateTaskStatus = async (req, res, next) => {
 
         await db.query('BEGIN');
 
+        const normalizedStatus = String(status || '').trim().toLowerCase();
+        const isReviewStatus = normalizedStatus === 'review' || normalizedStatus === 'in review';
+        const isDoneStatus = normalizedStatus === 'done';
+
+        if (isDoneStatus && req.user.role === 'Member') {
+            await db.query('ROLLBACK');
+            return res.status(403).json({ message: 'Only Admins or Team Leads can move tasks to Done' });
+        }
+
         // Check if task exists first
         const taskCheck = await db.query('SELECT title, status, sprint_id, is_power_hour FROM tasks WHERE id = $1 AND team_id = $2', [id, teamId]);
         if (taskCheck.rows.length === 0) {
@@ -291,10 +300,22 @@ export const updateTaskStatus = async (req, res, next) => {
             const link = (sprint_id || currentTask.sprint_id) ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
             const actor = userRow[0]?.name || 'a user';
 
-            if (status === 'In Review') {
-                await notifyAdminsAndLeads(teamId, 'TaskStatus', `Task "${currentTask.title}" moved to In Review by ${actor}.`, link);
-            } else if (status === 'Done') {
-                await notifyAdminsAndLeads(teamId, 'TaskStatus', `Task "${currentTask.title}" moved to Done by ${actor}.`, link);
+            if (isReviewStatus) {
+                await notifyAdminsAndLeads(
+                    teamId,
+                    'TaskStatus',
+                    `Task "${currentTask.title}" moved to In Review by ${actor}.`,
+                    link,
+                    { excludeUserId: req.user.id }
+                );
+            } else if (isDoneStatus) {
+                await notifyAdminsAndLeads(
+                    teamId,
+                    'TaskStatus',
+                    `Task "${currentTask.title}" moved to Done by ${actor}.`,
+                    link,
+                    { excludeUserId: req.user.id }
+                );
             }
         }
 
