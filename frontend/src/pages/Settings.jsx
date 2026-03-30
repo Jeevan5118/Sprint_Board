@@ -39,6 +39,7 @@ const Settings = () => {
     const [reportSearch, setReportSearch] = useState('');
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [sortPreference, setSortPreference] = useState('custom');
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
@@ -112,6 +113,33 @@ const Settings = () => {
         };
     };
 
+    const toDateInput = (d) => {
+        const date = new Date(d);
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    const resolveSortPreference = (pref) => {
+        const now = new Date();
+        const d = new Date(now);
+
+        if (pref === 'current_week') return { date: toDateInput(d), period: 'week' };
+        if (pref === 'last_week') {
+            d.setDate(d.getDate() - 7);
+            return { date: toDateInput(d), period: 'week' };
+        }
+        if (pref === 'current_month') return { date: toDateInput(d), period: 'month' };
+        if (pref === 'last_month') {
+            d.setMonth(d.getMonth() - 1);
+            return { date: toDateInput(d), period: 'month' };
+        }
+        if (pref === 'current_year') return { date: toDateInput(d), period: 'year' };
+        if (pref === 'last_year') {
+            d.setFullYear(d.getFullYear() - 1);
+            return { date: toDateInput(d), period: 'year' };
+        }
+        return { date: selectedDate, period: periodFilter };
+    };
+
     const fetchGlobalReports = async (type = reportFilter, date = selectedDate, period = periodFilter, search = reportSearch) => {
         setIsLoadingReports(true);
         setReportFilter(type);
@@ -154,7 +182,20 @@ const Settings = () => {
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSelectedDate(newDate);
+        setSortPreference('custom');
         fetchGlobalReports(reportFilter, newDate, periodFilter, reportSearch);
+    };
+
+    const handleSortPreferenceChange = (pref) => {
+        setSortPreference(pref);
+        if (pref === 'custom') {
+            fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+            return;
+        }
+        const { date, period } = resolveSortPreference(pref);
+        setSelectedDate(date);
+        setPeriodFilter(period);
+        fetchGlobalReports(reportFilter, date, period, reportSearch);
     };
 
     useEffect(() => {
@@ -427,7 +468,22 @@ const Settings = () => {
                                                 className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
                                             />
                                         </div>
-                                        <div className="lg:col-span-8 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
+                                        <div className="lg:col-span-4">
+                                            <select
+                                                value={sortPreference}
+                                                onChange={(e) => handleSortPreferenceChange(e.target.value)}
+                                                className="w-full px-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
+                                            >
+                                                <option value="custom">Custom Date</option>
+                                                <option value="current_week">Current Week</option>
+                                                <option value="last_week">Last Week</option>
+                                                <option value="current_month">Current Month</option>
+                                                <option value="last_month">Last Month</option>
+                                                <option value="current_year">Current Year</option>
+                                                <option value="last_year">Last Year</option>
+                                            </select>
+                                        </div>
+                                        <div className="lg:col-span-4 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
                                             <button
                                                 onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
                                                 className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
@@ -447,6 +503,7 @@ const Settings = () => {
                                             <button
                                                 key={p}
                                                 onClick={() => {
+                                                    setSortPreference('custom');
                                                     setPeriodFilter(p);
                                                     fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
                                                 }}
@@ -669,11 +726,25 @@ const Settings = () => {
                                             className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
+                                    <select
+                                        value={sortPreference}
+                                        onChange={(e) => handleSortPreferenceChange(e.target.value)}
+                                        className="w-full px-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                    >
+                                        <option value="custom">Custom Date</option>
+                                        <option value="current_week">Current Week</option>
+                                        <option value="last_week">Last Week</option>
+                                        <option value="current_month">Current Month</option>
+                                        <option value="last_month">Last Month</option>
+                                        <option value="current_year">Current Year</option>
+                                        <option value="last_year">Last Year</option>
+                                    </select>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {['day', 'week', 'month', 'year'].map((p) => (
                                             <button
                                                 key={p}
                                                 onClick={() => {
+                                                    setSortPreference('custom');
                                                     setPeriodFilter(p);
                                                     fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
                                                 }}
