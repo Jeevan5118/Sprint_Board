@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
 import api from '../api/axios';
@@ -42,6 +42,7 @@ const Settings = () => {
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
+    const searchDebounceRef = useRef(null);
 
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
@@ -90,6 +91,7 @@ const Settings = () => {
             const day = base.getDay(); // 0-6
             const diffToMonday = (day + 6) % 7;
             start.setDate(base.getDate() - diffToMonday);
+            end.setTime(start.getTime());
             end.setDate(start.getDate() + 6);
             end.setHours(23, 59, 59, 999);
         } else if (period === 'month') {
@@ -154,6 +156,17 @@ const Settings = () => {
         setSelectedDate(newDate);
         fetchGlobalReports(reportFilter, newDate, periodFilter, reportSearch);
     };
+
+    useEffect(() => {
+        if (activeTab !== 'global_reports' && activeTab !== 'my_submissions') return;
+        if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        searchDebounceRef.current = setTimeout(() => {
+            fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+        }, 350);
+        return () => {
+            if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+        };
+    }, [reportSearch]);
 
     const toggleMemberExpand = (memberName) => {
         setExpandedMembers(prev => ({
@@ -401,7 +414,7 @@ const Settings = () => {
                                     </h2>
                                     <p className="text-xs text-emerald-600 font-medium mt-0.5">Track daily reports and identify missing updates</p>
                                 </div>
-                                <div className="w-full md:w-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
+                                <div className="w-full md:w-auto space-y-3">
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Calendar className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
@@ -413,21 +426,24 @@ const Settings = () => {
                                             className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
-                                    <select
-                                        value={periodFilter}
-                                        onChange={(e) => {
-                                            const p = e.target.value;
-                                            setPeriodFilter(p);
-                                            fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
-                                        }}
-                                        className="w-full min-w-[130px] px-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
-                                    >
-                                        <option value="day">Day</option>
-                                        <option value="week">Week</option>
-                                        <option value="month">Month</option>
-                                        <option value="year">Year</option>
-                                    </select>
-                                    <div className="relative group lg:col-span-2">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {['day', 'week', 'month', 'year'].map((p) => (
+                                            <button
+                                                key={p}
+                                                onClick={() => {
+                                                    setPeriodFilter(p);
+                                                    fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
+                                                }}
+                                                className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${periodFilter === p
+                                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                                                    : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                                    }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Search className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                         </div>
@@ -436,13 +452,30 @@ const Settings = () => {
                                             value={reportSearch}
                                             onChange={(e) => setReportSearch(e.target.value)}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, e.currentTarget.value);
                                             }}
                                             placeholder="Search file name..."
                                             className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
-                                    <div className="sm:col-span-2 lg:col-span-4 flex bg-white/50 p-1 rounded-xl border border-emerald-100 shadow-sm w-full">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch)}
+                                            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-700 text-white hover:bg-emerald-800 transition-colors"
+                                        >
+                                            Search
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setReportSearch('');
+                                                fetchGlobalReports(reportFilter, selectedDate, periodFilter, '');
+                                            }}
+                                            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                    <div className="flex bg-white/50 p-1 rounded-xl border border-emerald-100 shadow-sm w-full">
                                         <button
                                             onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
                                             className={`flex-1 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-600 hover:bg-emerald-50'}`}
@@ -622,7 +655,7 @@ const Settings = () => {
                                     </h2>
                                     <p className="text-xs text-indigo-600 font-medium mt-0.5">View and manage your personal report history</p>
                                 </div>
-                                <div className="w-full md:w-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
+                                <div className="w-full md:w-auto space-y-3">
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Calendar className="h-4 w-4 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
@@ -634,21 +667,24 @@ const Settings = () => {
                                             className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
-                                    <select
-                                        value={periodFilter}
-                                        onChange={(e) => {
-                                            const p = e.target.value;
-                                            setPeriodFilter(p);
-                                            fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
-                                        }}
-                                        className="w-full min-w-[130px] px-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
-                                    >
-                                        <option value="day">Day</option>
-                                        <option value="week">Week</option>
-                                        <option value="month">Month</option>
-                                        <option value="year">Year</option>
-                                    </select>
-                                    <div className="relative group lg:col-span-2">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                        {['day', 'week', 'month', 'year'].map((p) => (
+                                            <button
+                                                key={p}
+                                                onClick={() => {
+                                                    setPeriodFilter(p);
+                                                    fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
+                                                }}
+                                                className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${periodFilter === p
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                                                    }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Search className="h-4 w-4 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
                                         </div>
@@ -657,13 +693,30 @@ const Settings = () => {
                                             value={reportSearch}
                                             onChange={(e) => setReportSearch(e.target.value)}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
+                                                if (e.key === 'Enter') fetchGlobalReports(reportFilter, selectedDate, periodFilter, e.currentTarget.value);
                                             }}
                                             placeholder="Search file name..."
                                             className="block w-full pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
                                         />
                                     </div>
-                                    <div className="sm:col-span-2 lg:col-span-4 flex bg-white/50 p-1 rounded-xl border border-indigo-100 shadow-sm w-full">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch)}
+                                            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-indigo-700 text-white hover:bg-indigo-800 transition-colors"
+                                        >
+                                            Search
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setReportSearch('');
+                                                fetchGlobalReports(reportFilter, selectedDate, periodFilter, '');
+                                            }}
+                                            className="px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                    <div className="flex bg-white/50 p-1 rounded-xl border border-indigo-100 shadow-sm w-full">
                                         <button
                                             onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
                                             className={`flex-1 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-600 hover:bg-indigo-50'}`}
