@@ -28,7 +28,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
         if (!isOpen) return;
         // Fetch members and projects for this team
         Promise.all([
-            api.get(`/teams/${teamId}/members`),
+            api.get(`/teams/${teamId}/members${isPowerHour ? '?is_power_hour=true' : ''}`),
             api.get(`/teams/${teamId}/projects?is_power_hour=${isPowerHour}`)
         ]).then(([membersRes, projectsRes]) => {
             setMembers(membersRes.data);
@@ -152,8 +152,8 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                             <label className="label-field">Status</label>
                             <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="input-field">
                                 {STATUSES.map(s => (
-                                    <option key={s} disabled={s === 'Done' && user?.role === 'Member'}>
-                                        {s} {s === 'Done' && user?.role === 'Member' ? '(Review Req.)' : ''}
+                                    <option key={s} disabled={s === 'Done' && user?.role === 'Member' && !isPowerHour}>
+                                        {s} {s === 'Done' && user?.role === 'Member' && !isPowerHour ? '(Review Req.)' : ''}
                                     </option>
                                 ))}
                             </select>

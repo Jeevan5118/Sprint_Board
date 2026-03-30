@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Layers, Search, LayoutTemplate, SquareKanban, ArrowLeft, Plus } from 'lucide-react';
+import { Layers, Search, ArrowLeft, Plus } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import TaskDrawer from '../components/sprint/TaskDrawer';
@@ -61,7 +61,7 @@ const ProjectDetails = ({ isPowerHour = false }) => {
     if (isLoading) return <div className="p-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue"></div></div>;
     if (!project) return <div className="p-8 text-center text-slate-500">Project not found.</div>;
 
-    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
+    const contextPath = isPowerHour ? 'power-hour-projects' : 'teams';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -74,17 +74,21 @@ const ProjectDetails = ({ isPowerHour = false }) => {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900">{project.name}</h1>
                         <p className="text-sm text-slate-500 mt-1">
-                            Team: <Link to={`/${contextPath}/${project.team_id}`} className="text-primary-blue hover:underline font-medium">{project.team_name}</Link>
+                            {isPowerHour ? 'Shared Power Hour project' : (
+                                <>Team: <Link to={`/${contextPath}/${project.team_id}`} className="text-primary-blue hover:underline font-medium">{project.team_name}</Link></>
+                            )}
                         </p>
                     </div>
-                    <div className="flex space-x-3">
-                        <Link to={`/${contextPath}/${project.team_id}/sprint-board`} className="btn-secondary flex items-center">
-                            <LayoutTemplate className="w-4 h-4 mr-2 text-indigo-600" /> Sprint Board
-                        </Link>
-                        <Link to={`/${contextPath}/${project.team_id}/kanban`} className="btn-secondary flex items-center">
-                            <SquareKanban className="w-4 h-4 mr-2 text-emerald-600" /> Kanban Board
-                        </Link>
-                    </div>
+                    {!isPowerHour && (
+                        <div className="flex space-x-3">
+                            <Link to={`/${contextPath}/${project.team_id}/sprint-board`} className="btn-secondary flex items-center">
+                                Sprint Board
+                            </Link>
+                            <Link to={`/${contextPath}/${project.team_id}/kanban`} className="btn-secondary flex items-center">
+                                Kanban Board
+                            </Link>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -2,11 +2,20 @@ import db from '../config/db.js';
 import { createNotification, notifyAdminsAndLeads, notifyUsers } from '../services/notificationService.js';
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
+const toBool = (value) => value === true || value === 'true';
+
+const getTaskLink = (task, teamId) => {
+    if (task?.is_power_hour) {
+        return task?.project_id ? `/power-hour-projects/${task.project_id}` : '/power-hour-projects';
+    }
+    return task?.sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
+};
+
 export const getTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
         const { sprint_id, status, assignee_id, is_power_hour, project_id } = req.query;
-        const isPowerHourBool = is_power_hour === 'true' || is_power_hour === true;
+        const isPowerHourBool = toBool(is_power_hour);
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -41,7 +50,7 @@ export const getTasks = async (req, res, next) => {
             params.push(assignee_id);
         }
         // Logic 3: Restricted Member visibility
-        if (req.user.role === 'Member') {
+        if (req.user.role === 'Member' && !isPowerHourBool) {
             query += ` AND t.assignee_id = $${params.length + 1}`;
             params.push(req.user.id);
         }
@@ -56,7 +65,7 @@ export const getTasks = async (req, res, next) => {
 export const getKanbanTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+        const isPowerHourBool = toBool(req.query.is_power_hour);
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -69,7 +78,7 @@ export const getKanbanTasks = async (req, res, next) => {
         `;
         let params = [teamId, isPowerHourBool];
         // Logic 3: Restricted Member visibility for Kanban
-        if (req.user.role === 'Member') {
+        if (req.user.role === 'Member' && !isPowerHourBool) {
             query += ` AND t.assignee_id = $3`;
             params.push(req.user.id);
         }
@@ -95,9 +104,12 @@ export const createTask = async (req, res, next) => {
             story_points, estimated_hours, due_date,
             project_id, sprint_id, assignee_id, is_power_hour
         } = req.body;
-        const isPowerHourBool = is_power_hour === true || is_power_hour === 'true';
+        const isPowerHourBool = toBool(is_power_hour);
 
         if (!title) return res.status(400).json({ message: 'Title is required' });
+        if (!isPowerHourBool && req.user.role === 'Member') {
+            return res.status(403).json({ message: 'Only Admins or Team Leads can create normal tasks' });
+        }
 
         // Logic 10: Auto-assign Active Sprint if no sprint provided, specific to Power Hour context
         let targetSprintId = sprint_id;
@@ -140,8 +152,10 @@ export const createTask = async (req, res, next) => {
         ]);
 
         // Logic 14: Notification trigger when assigned & Notify Admins/Leads on creation
-        const contextPath = isPowerHourBool ? 'power-hour-teams' : 'teams';
-        const link = targetSprintId ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+        const link = getTaskLink(
+            { is_power_hour: isPowerHourBool, project_id, sprint_id: targetSprintId },
+            teamId
+        );
 
         // Notify Assignee
         if (assignee_id && assignee_id !== req.user.id) {
@@ -211,8 +225,7 @@ export const updateTask = async (req, res, next) => {
 
         // Logic 14: Notify user of the assignment specifically if the assignee ID was changed
         if (updates.assignee_id && updates.assignee_id !== req.user.id) {
-            const contextPath = rows[0].is_power_hour ? 'power-hour-teams' : 'teams';
-            const link = rows[0].sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+            const link = getTaskLink(rows[0], teamId);
             await createNotification(
                 updates.assignee_id,
                 'TaskUpdated',
@@ -223,8 +236,7 @@ export const updateTask = async (req, res, next) => {
 
         const changedKeys = Object.keys(updates).filter(k => !['id', 'team_id', 'creator_id', 'created_at', 'updated_at', 'status', 'sort_order'].includes(k));
         if (changedKeys.length > 0) {
-            const contextPath = rows[0].is_power_hour ? 'power-hour-teams' : 'teams';
-            const link = rows[0].sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+            const link = getTaskLink(rows[0], teamId);
             const { rows: actorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
             await notifyAdminsAndLeads(
                 teamId,
@@ -256,18 +268,18 @@ export const updateTaskStatus = async (req, res, next) => {
         const isReviewStatus = normalizedStatus === 'review' || normalizedStatus === 'in review';
         const isDoneStatus = normalizedStatus === 'done';
 
-        if (isDoneStatus && req.user.role === 'Member') {
-            await db.query('ROLLBACK');
-            return res.status(403).json({ message: 'Only Admins or Team Leads can move tasks to Done' });
-        }
-
         // Check if task exists first
-        const taskCheck = await db.query('SELECT title, status, sprint_id, is_power_hour FROM tasks WHERE id = $1 AND team_id = $2', [id, teamId]);
+        const taskCheck = await db.query('SELECT title, status, sprint_id, is_power_hour, project_id FROM tasks WHERE id = $1 AND team_id = $2', [id, teamId]);
         if (taskCheck.rows.length === 0) {
             await db.query('ROLLBACK');
             return res.status(404).json({ message: 'Task not found' });
         }
         const currentTask = taskCheck.rows[0];
+
+        if (isDoneStatus && req.user.role === 'Member' && !currentTask.is_power_hour) {
+            await db.query('ROLLBACK');
+            return res.status(403).json({ message: 'Only Admins or Team Leads can move tasks to Done' });
+        }
 
         // If this is a Kanban task move (no sprint), check WIP limits
         if (!sprint_id && !currentTask.sprint_id) {
@@ -305,8 +317,10 @@ export const updateTaskStatus = async (req, res, next) => {
         // Feature: Notify Admins & Leads on Status Change (In Review or Done)
         if (currentTask.status !== status) {
             const { rows: userRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
-            const contextPath = currentTask.is_power_hour ? 'power-hour-teams' : 'teams';
-            const link = (sprint_id || currentTask.sprint_id) ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+            const link = getTaskLink(
+                { ...currentTask, sprint_id: sprint_id || currentTask.sprint_id },
+                teamId
+            );
             const actor = userRow[0]?.name || 'a user';
 
             if (isReviewStatus) {
@@ -345,8 +359,7 @@ export const deleteTask = async (req, res, next) => {
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
 
         const deletedTask = rows[0];
-        const contextPath = deletedTask.is_power_hour ? 'power-hour-teams' : 'teams';
-        const link = deletedTask.sprint_id ? `/${contextPath}/${teamId}/sprint-board` : `/${contextPath}/${teamId}/kanban`;
+        const link = getTaskLink(deletedTask, teamId);
         const { rows: actorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
         const actor = actorRow[0]?.name || 'a user';
 

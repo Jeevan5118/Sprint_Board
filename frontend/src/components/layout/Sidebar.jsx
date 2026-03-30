@@ -10,28 +10,22 @@ const Sidebar = ({ isOpen, onClose }) => {
     const isPowerHourMode = location.pathname.startsWith('/power-hour');
 
     const navItems = [
-        { 
-            name: isPowerHourMode ? '⚡ PH Dashboard' : 'Dashboard', 
-            path: isPowerHourMode ? '/power-hour-dashboard' : '/dashboard', 
-            icon: LayoutDashboard 
+        {
+            name: isPowerHourMode ? 'Power Hour' : 'Dashboard',
+            path: isPowerHourMode ? '/power-hour-dashboard' : '/dashboard',
+            icon: LayoutDashboard
         },
-        { 
-            name: isPowerHourMode ? '⚡ PH Teams' : 'Teams', 
-            path: isPowerHourMode ? '/power-hour-teams' : '/teams', 
-            icon: Users 
+        ...(!isPowerHourMode ? [
+            { name: 'Teams', path: '/teams', icon: Users }
+        ] : []),
+        {
+            name: isPowerHourMode ? 'PH Projects' : 'Projects',
+            path: isPowerHourMode ? '/power-hour-projects' : '/projects',
+            icon: FolderKanban
         },
-        { 
-            name: isPowerHourMode ? '⚡ PH Projects' : 'Projects', 
-            path: isPowerHourMode ? '/power-hour-projects' : '/projects', 
-            icon: FolderKanban 
-        },
-        // We always show the main Power Hour entry if we are NOT in power hour mode, 
-        // Or show the "Exit Power Hour" link if we ARE.
-        ...(isPowerHourMode ? [
-            { name: 'Exit Power Hour', path: '/dashboard', icon: Zap }
-        ] : [
-            { name: '⚡ Power Hour', path: '/power-hour-dashboard', icon: Zap }
-        ]),
+        ...(isPowerHourMode
+            ? [{ name: 'Exit Power Hour', path: '/dashboard', icon: Zap }]
+            : [{ name: 'Power Hour', path: '/power-hour-dashboard', icon: Zap }]),
         { name: 'Timeline', path: '/timeline', icon: Calendar },
         { name: 'Notifications', path: '/notifications', icon: Bell },
     ];
@@ -47,7 +41,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     return (
         <div className={`
-            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-full 
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col h-full
             transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex
             ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}>

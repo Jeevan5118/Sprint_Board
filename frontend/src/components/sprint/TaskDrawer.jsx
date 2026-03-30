@@ -8,6 +8,10 @@ import { useParams } from 'react-router-dom';
 const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const { teamId: paramTeamId } = useParams();
     const teamId = task?.team_id || paramTeamId;
+    const withPowerHour = (path) => {
+        if (!task?.is_power_hour) return path;
+        return `${path}${path.includes('?') ? '&' : '?'}is_power_hour=true`;
+    };
 
     const [activeTab, setActiveTab] = useState('details');
     const [timeLogs, setTimeLogs] = useState([]);
@@ -30,27 +34,27 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
             try {
                 setLoadingData(true);
                 const [memRes, projRes] = await Promise.all([
-                    api.get(`/teams/${teamId}/members`),
-                    api.get(`/teams/${teamId}/projects`)
+                    api.get(withPowerHour(`/teams/${teamId}/members`)),
+                    api.get(withPowerHour(`/teams/${teamId}/projects`))
                 ]);
                 setMembers(memRes.data);
                 setProjects(projRes.data);
 
                 // Tab specific data
                 if (activeTab === 'comments') {
-                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/comments`);
+                    const { data } = await api.get(withPowerHour(`/teams/${teamId}/tasks/${task.id}/comments`));
                     setComments(data);
                 } else if (activeTab === 'time') {
-                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/time-logs`);
+                    const { data } = await api.get(withPowerHour(`/teams/${teamId}/tasks/${task.id}/time-logs`));
                     setTimeLogs(data || []);
                 } else if (activeTab === 'attachments') {
-                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/attachments`);
+                    const { data } = await api.get(withPowerHour(`/teams/${teamId}/tasks/${task.id}/attachments`));
                     setAttachments(data || []);
                 } else if (activeTab === 'links') {
-                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/links`);
+                    const { data } = await api.get(withPowerHour(`/teams/${teamId}/tasks/${task.id}/links`));
                     setLinks(data || []);
                 } else if (activeTab === 'history') {
-                    const { data } = await api.get(`/teams/${teamId}/tasks/${task.id}/history`);
+                    const { data } = await api.get(withPowerHour(`/teams/${teamId}/tasks/${task.id}/history`));
                     setHistory(data || []);
                 }
             } catch (err) {
@@ -72,7 +76,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
 
         try {
             setIsUploading(true);
-            const { data } = await api.post(`/teams/${teamId}/tasks/${task.id}/attachments`, formData, {
+            const { data } = await api.post(withPowerHour(`/teams/${teamId}/tasks/${task.id}/attachments`), formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setAttachments(prev => [data, ...prev]);
@@ -87,7 +91,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     const handlePostComment = async () => {
         if (!newComment.trim()) return;
         try {
-            const { data } = await api.post(`/teams/${teamId}/tasks/${task.id}/comments`, { content: newComment });
+            const { data } = await api.post(withPowerHour(`/teams/${teamId}/tasks/${task.id}/comments`), { content: newComment });
             setComments(prev => [...prev, data]);
             if (onTaskUpdated) onTaskUpdated(data);
             toast.success("Comment posted");
@@ -100,7 +104,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
         e.preventDefault();
         if (!newLinkUrl.trim()) return;
         try {
-            const { data } = await api.post(`/teams/${teamId}/tasks/${task.id}/links`, { title: newLinkTitle, url: newLinkUrl });
+            const { data } = await api.post(withPowerHour(`/teams/${teamId}/tasks/${task.id}/links`), { title: newLinkTitle, url: newLinkUrl });
             setNewLinkTitle('');
             setNewLinkUrl('');
             setLinks(prev => [data, ...prev]);
@@ -112,7 +116,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
 
     const handleDeleteLink = async (linkId) => {
         try {
-            await api.delete(`/teams/${teamId}/tasks/${task.id}/links/${linkId}`);
+            await api.delete(withPowerHour(`/teams/${teamId}/tasks/${task.id}/links/${linkId}`));
             setLinks(prev => prev.filter(l => l.id !== linkId));
             toast.success("Link removed");
         } catch {

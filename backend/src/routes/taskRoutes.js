@@ -17,7 +17,7 @@ router.use(requireTeamMember);
 router.get('/', getTasks);
 router.get('/kanban', getKanbanTasks);
 router.get('/:id/history', getTaskHistory);
-router.post('/', requireRole(['Admin', 'Team Lead']), createTask);
+router.post('/', createTask);
 
 router.put('/:id', updateTask);
 router.put('/:id/status', updateTaskStatus);

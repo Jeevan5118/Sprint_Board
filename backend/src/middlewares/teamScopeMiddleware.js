@@ -5,6 +5,15 @@ export const requireTeamMember = async (req, res, next) => {
         const { teamId } = req.params;
         const userId = req.user.id;
         const userRole = req.user.role;
+        const isPowerHour = req.query.is_power_hour === 'true'
+            || req.query.is_power_hour === true
+            || req.body?.is_power_hour === 'true'
+            || req.body?.is_power_hour === true;
+
+        // Power Hour is workspace-wide: any authenticated user can access it.
+        if (isPowerHour) {
+            return next();
+        }
 
         if (userRole === 'Admin') {
             return next(); // Admins bypass team scope

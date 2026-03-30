@@ -7,13 +7,14 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const isMember = req.user.role === 'Member';
 
         const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+        const isWorkspaceWide = isPowerHourBool;
 
         // Build params: always [isPowerHourBool] for admin, [isPowerHourBool, userId] for others
-        const baseParams = isAdmin ? [isPowerHourBool] : [isPowerHourBool, userId];
-        const userFilter = isAdmin ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)';
-        const memberFilter = isMember ? 'AND t.assignee_id = $2' : '';
-        const teamMemberJoin = isAdmin ? '' : 'JOIN team_members tm ON t.id = tm.team_id WHERE tm.user_id = $2';
-        const memberTaskFilter = isMember ? 'AND tk.assignee_id = $2' : '';
+        const baseParams = (isAdmin || isWorkspaceWide) ? [isPowerHourBool] : [isPowerHourBool, userId];
+        const userFilter = (isAdmin || isWorkspaceWide) ? '' : 'AND team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)';
+        const memberFilter = (isMember && !isWorkspaceWide) ? 'AND t.assignee_id = $2' : '';
+        const teamMemberJoin = (isAdmin || isWorkspaceWide) ? '' : 'JOIN team_members tm ON t.id = tm.team_id WHERE tm.user_id = $2';
+        const memberTaskFilter = (isMember && !isWorkspaceWide) ? 'AND tk.assignee_id = $2' : '';
 
         // 1. Overall Metrics
         const statsQuery = `
@@ -55,7 +56,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
             `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' 
              AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
              ${userFilter.replace('team_id IN', 'team_id IN')} 
-             ${isMember ? 'AND assignee_id = $2' : ''} 
+             ${isMember && !isWorkspaceWide ? 'AND assignee_id = $2' : ''} 
              ORDER BY due_date ASC LIMIT 5`,
             baseParams
         );
@@ -63,7 +64,7 @@ export const getDashboardAnalytics = async (req, res, next) => {
             `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' 
              AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
              ${userFilter} 
-             ${isMember ? 'AND assignee_id = $2' : ''} 
+             ${isMember && !isWorkspaceWide ? 'AND assignee_id = $2' : ''} 
              ORDER BY due_date ASC LIMIT 5`,
             baseParams
         );
@@ -73,8 +74,8 @@ export const getDashboardAnalytics = async (req, res, next) => {
              JOIN users u ON c.user_id = u.id 
              JOIN tasks t ON c.task_id = t.id
              WHERE (t.is_power_hour = $1 OR (t.is_power_hour IS NULL AND $1 = false))
-             ${isAdmin ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'}
-             ${isMember ? 'AND t.assignee_id = $2' : ''}
+             ${isAdmin || isWorkspaceWide ? '' : 'AND t.team_id IN (SELECT team_id FROM team_members WHERE user_id = $2)'}
+             ${isMember && !isWorkspaceWide ? 'AND t.assignee_id = $2' : ''}
              ORDER BY c.created_at DESC LIMIT 8`,
             baseParams
         );
@@ -99,8 +100,8 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 throughput: parseInt(t.throughput)
             })),
             alerts: [
-                ...overdueRes.rows.map(t => ({ id: t.id, type: 'overdue', message: `"${t.title}" is overdue`, link: `/${isPowerHourBool ? 'power-hour-teams' : 'teams'}/${t.team_id}/sprint-board` })),
-                ...upcomingRes.rows.map(t => ({ id: `up-${t.id}`, type: 'upcoming', message: `"${t.title}" due soon`, link: `/${isPowerHourBool ? 'power-hour-teams' : 'teams'}/${t.team_id}/sprint-board` }))
+                ...overdueRes.rows.map(t => ({ id: t.id, type: 'overdue', message: `"${t.title}" is overdue`, link: isPowerHourBool ? '/power-hour-projects' : `/teams/${t.team_id}/sprint-board` })),
+                ...upcomingRes.rows.map(t => ({ id: `up-${t.id}`, type: 'upcoming', message: `"${t.title}" due soon`, link: isPowerHourBool ? '/power-hour-projects' : `/teams/${t.team_id}/sprint-board` }))
             ],
             timeline: activityRes.rows.map(e => ({
                 id: e.id,

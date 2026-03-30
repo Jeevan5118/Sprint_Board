@@ -53,11 +53,11 @@ function App() {
                 <Route path="/teams/:teamId/kanban" element={<KanbanBoard />} />
                 <Route path="/teams/:teamId/sprint-board" element={<SprintBoard />} />
 
-                <Route path="/power-hour-teams" element={<Teams isPowerHour={true} />} />
-                <Route path="/power-hour-teams/:teamId" element={<TeamDetails isPowerHour={true} />} />
-                <Route path="/power-hour-teams/:teamId/sprints" element={<Sprints isPowerHour={true} />} />
-                <Route path="/power-hour-teams/:teamId/kanban" element={<KanbanBoard isPowerHour={true} />} />
-                <Route path="/power-hour-teams/:teamId/sprint-board" element={<SprintBoard isPowerHour={true} />} />
+                <Route path="/power-hour-teams" element={<Navigate to="/power-hour-projects" replace />} />
+                <Route path="/power-hour-teams/:teamId" element={<Navigate to="/power-hour-projects" replace />} />
+                <Route path="/power-hour-teams/:teamId/sprints" element={<Navigate to="/power-hour-projects" replace />} />
+                <Route path="/power-hour-teams/:teamId/kanban" element={<Navigate to="/power-hour-projects" replace />} />
+                <Route path="/power-hour-teams/:teamId/sprint-board" element={<Navigate to="/power-hour-projects" replace />} />
 
                 <Route path="/projects" element={<Projects />} />
                 <Route path="/projects/:projectId" element={<ProjectDetails />} />

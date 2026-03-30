@@ -16,7 +16,7 @@ const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData, isPowerHour = f
         throughput: 'Weekly Velocity (Tasks/Week)'
     }[filter];
 
-    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
+    const contextPath = isPowerHour ? 'power-hour-projects' : 'teams';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
@@ -33,8 +33,8 @@ const TeamAnalyticsModal = ({ isOpen, onClose, filter, teamData, isPowerHour = f
                                 <h4 className="font-semibold text-slate-900">{t.name}</h4>
                                 <div className="flex items-center space-x-3 text-sm">
                                     <span className="text-slate-500 font-medium">{t.total} tasks</span>
-                                    <Link to={`/${contextPath}/${t.id}/sprint-board`} className="text-primary-blue hover:text-blue-800 font-bold text-xs flex items-center">
-                                        View Board <ArrowUpRight className="w-3 h-3 ml-1" />
+                                    <Link to={isPowerHour ? '/power-hour-projects' : `/${contextPath}/${t.id}/sprint-board`} className="text-primary-blue hover:text-blue-800 font-bold text-xs flex items-center">
+                                        {isPowerHour ? 'View Projects' : 'View Board'} <ArrowUpRight className="w-3 h-3 ml-1" />
                                     </Link>
                                 </div>
                             </div>
@@ -245,7 +245,7 @@ const Dashboard = ({ isPowerHour = false }) => {
         { key: 'throughput', label: 'Weekly Velocity', value: data.analytics.throughput, icon: ArrowUpRight, color: 'bg-primary-blue/10 text-primary-blue', textColor: 'text-primary-blue' },
     ];
 
-    const contextPath = isPowerHour ? 'power-hour-teams' : 'teams';
+    const contextPath = isPowerHour ? 'power-hour-projects' : 'teams';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -319,6 +319,7 @@ const Dashboard = ({ isPowerHour = false }) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Team Boards Overview */}
                 <div className="lg:col-span-2 space-y-6">
+                    {!isPowerHour ? (
                     <div className="card">
                         <div className="flex items-center mb-4">
                             <Users className="w-5 h-5 mr-2 text-slate-500" />
@@ -355,6 +356,20 @@ const Dashboard = ({ isPowerHour = false }) => {
                             </table>
                         </div>
                     </div>
+                    ) : (
+                    <div className="card">
+                        <div className="flex items-center mb-3">
+                            <Users className="w-5 h-5 mr-2 text-amber-500" />
+                            <h2 className="text-lg font-semibold text-slate-800">Power Hour Workspace</h2>
+                        </div>
+                        <p className="text-sm text-slate-600">
+                            Teams and boards are disabled in Power Hour. Use shared projects to create and complete tasks.
+                        </p>
+                        <Link to="/power-hour-projects" className="inline-flex mt-4 text-sm font-semibold text-primary-blue hover:text-blue-900">
+                            Open Power Hour Projects
+                        </Link>
+                    </div>
+                    )}
 
                     {/* Activity Timeline */}
                     <div className="card">

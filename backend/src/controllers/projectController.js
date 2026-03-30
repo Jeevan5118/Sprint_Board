@@ -5,6 +5,7 @@ export const getAllProjects = async (req, res, next) => {
     try {
         const isMember = req.user.role === 'Member';
         const isAdmin = req.user.role === 'Admin';
+        const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
 
         let query = `
             SELECT p.*, t.name AS team_name,
@@ -17,9 +18,12 @@ export const getAllProjects = async (req, res, next) => {
                 ${isMember ? 'AND tk.assignee_id = $1' : ''})
         `;
         let params = [];
-        const isPowerHourBool = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
 
-        if (!isAdmin) {
+        if (isPowerHourBool) {
+            // Power Hour is org-wide: everyone sees all power-hour projects.
+            query += ` WHERE (p.is_power_hour = $1 OR (p.is_power_hour IS NULL AND $1 = false))`;
+            params.push(true);
+        } else if (!isAdmin) {
             params.push(req.user.id, isPowerHourBool);
             query += ` WHERE p.team_id IN (SELECT team_id FROM team_members WHERE user_id = $1)`;
             query += ` AND (p.is_power_hour = $2 OR (p.is_power_hour IS NULL AND $2 = false))`;
