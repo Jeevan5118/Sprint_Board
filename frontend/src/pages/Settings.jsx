@@ -39,7 +39,7 @@ const Settings = () => {
     const [reportSearch, setReportSearch] = useState('');
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [sortPreference, setSortPreference] = useState('custom');
+    const [sortPreference, setSortPreference] = useState('current_week');
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
@@ -182,16 +182,11 @@ const Settings = () => {
     const handleDateChange = (e) => {
         const newDate = e.target.value;
         setSelectedDate(newDate);
-        setSortPreference('custom');
         fetchGlobalReports(reportFilter, newDate, periodFilter, reportSearch);
     };
 
     const handleSortPreferenceChange = (pref) => {
         setSortPreference(pref);
-        if (pref === 'custom') {
-            fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch);
-            return;
-        }
         const { date, period } = resolveSortPreference(pref);
         setSelectedDate(date);
         setPeriodFilter(period);
@@ -474,12 +469,11 @@ const Settings = () => {
                                                 onChange={(e) => handleSortPreferenceChange(e.target.value)}
                                                 className="w-full px-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
                                             >
-                                                <option value="custom">Custom Date</option>
-                                                <option value="current_week">Current Week</option>
+                                                <option value="current_week">This Week</option>
                                                 <option value="last_week">Last Week</option>
-                                                <option value="current_month">Current Month</option>
+                                                <option value="current_month">This Month</option>
                                                 <option value="last_month">Last Month</option>
-                                                <option value="current_year">Current Year</option>
+                                                <option value="current_year">This Year</option>
                                                 <option value="last_year">Last Year</option>
                                             </select>
                                         </div>
@@ -503,7 +497,6 @@ const Settings = () => {
                                             <button
                                                 key={p}
                                                 onClick={() => {
-                                                    setSortPreference('custom');
                                                     setPeriodFilter(p);
                                                     fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
                                                 }}
@@ -731,12 +724,11 @@ const Settings = () => {
                                         onChange={(e) => handleSortPreferenceChange(e.target.value)}
                                         className="w-full px-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
                                     >
-                                        <option value="custom">Custom Date</option>
-                                        <option value="current_week">Current Week</option>
+                                        <option value="current_week">This Week</option>
                                         <option value="last_week">Last Week</option>
-                                        <option value="current_month">Current Month</option>
+                                        <option value="current_month">This Month</option>
                                         <option value="last_month">Last Month</option>
-                                        <option value="current_year">Current Year</option>
+                                        <option value="current_year">This Year</option>
                                         <option value="last_year">Last Year</option>
                                     </select>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -744,7 +736,6 @@ const Settings = () => {
                                             <button
                                                 key={p}
                                                 onClick={() => {
-                                                    setSortPreference('custom');
                                                     setPeriodFilter(p);
                                                     fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
                                                 }}
