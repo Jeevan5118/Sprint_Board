@@ -39,7 +39,6 @@ const Settings = () => {
     const [reportSearch, setReportSearch] = useState('');
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const [sortPreference, setSortPreference] = useState('current_week');
     const [auditData, setAuditData] = useState([]);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
@@ -118,26 +117,30 @@ const Settings = () => {
         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     };
 
-    const resolveSortPreference = (pref) => {
-        const now = new Date();
-        const d = new Date(now);
+    const getWeekInputValue = (dateStr) => {
+        const date = new Date(`${dateStr}T00:00:00`);
+        const day = date.getDay() || 7;
+        date.setDate(date.getDate() + 4 - day);
+        const yearStart = new Date(date.getFullYear(), 0, 1);
+        const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+        return `${date.getFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+    };
 
-        if (pref === 'current_week') return { date: toDateInput(d), period: 'week' };
-        if (pref === 'last_week') {
-            d.setDate(d.getDate() - 7);
-            return { date: toDateInput(d), period: 'week' };
-        }
-        if (pref === 'current_month') return { date: toDateInput(d), period: 'month' };
-        if (pref === 'last_month') {
-            d.setMonth(d.getMonth() - 1);
-            return { date: toDateInput(d), period: 'month' };
-        }
-        if (pref === 'current_year') return { date: toDateInput(d), period: 'year' };
-        if (pref === 'last_year') {
-            d.setFullYear(d.getFullYear() - 1);
-            return { date: toDateInput(d), period: 'year' };
-        }
-        return { date: selectedDate, period: periodFilter };
+    const weekValueToDate = (weekValue) => {
+        const [yearStr, weekStr] = weekValue.split('-W');
+        const year = parseInt(yearStr, 10);
+        const week = parseInt(weekStr, 10);
+        const simple = new Date(year, 0, 1 + (week - 1) * 7);
+        const day = simple.getDay();
+        const monday = new Date(simple);
+        if (day <= 4) monday.setDate(simple.getDate() - simple.getDay() + 1);
+        else monday.setDate(simple.getDate() + 8 - simple.getDay());
+        return toDateInput(monday);
+    };
+
+    const getMonthInputValue = (dateStr) => {
+        const d = new Date(`${dateStr}T00:00:00`);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     };
 
     const fetchGlobalReports = async (type = reportFilter, date = selectedDate, period = periodFilter, search = reportSearch) => {
@@ -185,12 +188,23 @@ const Settings = () => {
         fetchGlobalReports(reportFilter, newDate, periodFilter, reportSearch);
     };
 
-    const handleSortPreferenceChange = (pref) => {
-        setSortPreference(pref);
-        const { date, period } = resolveSortPreference(pref);
-        setSelectedDate(date);
-        setPeriodFilter(period);
-        fetchGlobalReports(reportFilter, date, period, reportSearch);
+    const handleWeekChange = (e) => {
+        const dateFromWeek = weekValueToDate(e.target.value);
+        setSelectedDate(dateFromWeek);
+        fetchGlobalReports(reportFilter, dateFromWeek, 'week', reportSearch);
+    };
+
+    const handleMonthChange = (e) => {
+        const [year, month] = e.target.value.split('-');
+        const dateFromMonth = `${year}-${month}-01`;
+        setSelectedDate(dateFromMonth);
+        fetchGlobalReports(reportFilter, dateFromMonth, 'month', reportSearch);
+    };
+
+    const handleYearChange = (e) => {
+        const dateFromYear = `${e.target.value}-01-01`;
+        setSelectedDate(dateFromYear);
+        fetchGlobalReports(reportFilter, dateFromYear, 'year', reportSearch);
     };
 
     useEffect(() => {
@@ -456,28 +470,41 @@ const Settings = () => {
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <Calendar className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                             </div>
-                                            <input
-                                                type="date"
-                                                value={selectedDate}
-                                                onChange={handleDateChange}
-                                                className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
-                                            />
+                                            {periodFilter === 'week' ? (
+                                                <input
+                                                    type="week"
+                                                    value={getWeekInputValue(selectedDate)}
+                                                    onChange={handleWeekChange}
+                                                    className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
+                                                />
+                                            ) : periodFilter === 'month' ? (
+                                                <input
+                                                    type="month"
+                                                    value={getMonthInputValue(selectedDate)}
+                                                    onChange={handleMonthChange}
+                                                    className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
+                                                />
+                                            ) : periodFilter === 'year' ? (
+                                                <select
+                                                    value={new Date(`${selectedDate}T00:00:00`).getFullYear()}
+                                                    onChange={handleYearChange}
+                                                    className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
+                                                >
+                                                    {Array.from({ length: 15 }).map((_, i) => {
+                                                        const year = new Date().getFullYear() - 7 + i;
+                                                        return <option key={year} value={year}>{year}</option>;
+                                                    })}
+                                                </select>
+                                            ) : (
+                                                <input
+                                                    type="date"
+                                                    value={selectedDate}
+                                                    onChange={handleDateChange}
+                                                    className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
+                                                />
+                                            )}
                                         </div>
-                                        <div className="lg:col-span-4">
-                                            <select
-                                                value={sortPreference}
-                                                onChange={(e) => handleSortPreferenceChange(e.target.value)}
-                                                className="w-full px-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
-                                            >
-                                                <option value="current_week">This Week</option>
-                                                <option value="last_week">Last Week</option>
-                                                <option value="current_month">This Month</option>
-                                                <option value="last_month">Last Month</option>
-                                                <option value="current_year">This Year</option>
-                                                <option value="last_year">Last Year</option>
-                                            </select>
-                                        </div>
-                                        <div className="lg:col-span-4 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
+                                        <div className="lg:col-span-8 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
                                             <button
                                                 onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
                                                 className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
@@ -712,25 +739,40 @@ const Settings = () => {
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <Calendar className="h-4 w-4 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
                                         </div>
-                                        <input
-                                            type="date"
-                                            value={selectedDate}
-                                            onChange={handleDateChange}
-                                            className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
-                                        />
+                                        {periodFilter === 'week' ? (
+                                            <input
+                                                type="week"
+                                                value={getWeekInputValue(selectedDate)}
+                                                onChange={handleWeekChange}
+                                                className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                            />
+                                        ) : periodFilter === 'month' ? (
+                                            <input
+                                                type="month"
+                                                value={getMonthInputValue(selectedDate)}
+                                                onChange={handleMonthChange}
+                                                className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                            />
+                                        ) : periodFilter === 'year' ? (
+                                            <select
+                                                value={new Date(`${selectedDate}T00:00:00`).getFullYear()}
+                                                onChange={handleYearChange}
+                                                className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                            >
+                                                {Array.from({ length: 15 }).map((_, i) => {
+                                                    const year = new Date().getFullYear() - 7 + i;
+                                                    return <option key={year} value={year}>{year}</option>;
+                                                })}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="date"
+                                                value={selectedDate}
+                                                onChange={handleDateChange}
+                                                className="block w-full min-w-[170px] pl-10 pr-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                            />
+                                        )}
                                     </div>
-                                    <select
-                                        value={sortPreference}
-                                        onChange={(e) => handleSortPreferenceChange(e.target.value)}
-                                        className="w-full px-3 py-2 border border-indigo-200 rounded-xl text-sm font-bold text-indigo-900 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all shadow-sm"
-                                    >
-                                        <option value="current_week">This Week</option>
-                                        <option value="last_week">Last Week</option>
-                                        <option value="current_month">This Month</option>
-                                        <option value="last_month">Last Month</option>
-                                        <option value="current_year">This Year</option>
-                                        <option value="last_year">Last Year</option>
-                                    </select>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                         {['day', 'week', 'month', 'year'].map((p) => (
                                             <button
