@@ -19,7 +19,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
         priority: 'Medium',
         status: 'To Do',
         story_points: '',
-        assignee_id: '',
+        assignee_ids: [],
         due_date: '',
         project_id: ''
     });
@@ -43,7 +43,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                 priority: editTask.priority || 'Medium',
                 status: editTask.status || 'To Do',
                 story_points: editTask.story_points || '',
-                assignee_id: editTask.assignee_id || '',
+                assignee_ids: editTask.assignee_ids?.length ? editTask.assignee_ids : (editTask.assignee_id ? [editTask.assignee_id] : []),
                 due_date: editTask.due_date ? editTask.due_date.split('T')[0] : '',
                 project_id: editTask.project_id || ''
             });
@@ -55,7 +55,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                 priority: 'Medium', 
                 status: 'To Do', 
                 story_points: '', 
-                assignee_id: '', 
+                assignee_ids: [],
                 due_date: '', 
                 project_id: defaultProjectId || '' 
             });
@@ -71,7 +71,8 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                 ...form,
                 story_points: form.story_points ? parseInt(form.story_points) : 0,
                 sprint_id: sprintId || null,
-                assignee_id: form.assignee_id || null,
+                assignee_ids: form.assignee_ids || [],
+                assignee_id: form.assignee_ids?.[0] || null,
                 project_id: form.project_id || null,
                 is_power_hour: isPowerHour
             };
@@ -135,7 +136,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                     </div>
 
                     {/* Type, Priority, Status */}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <label className="label-field flex items-center gap-1"><Tag className="w-3 h-3" /> Type</label>
                             <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className="input-field">
@@ -169,14 +170,31 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                         </select>
                     </div>
 
-                    {/* Assignee, Story Points, Due Date */}
+                    {/* Assignees, Story Points, Due Date */}
                     <div className="grid grid-cols-3 gap-3">
                         <div>
-                            <label className="label-field flex items-center gap-1"><User className="w-3 h-3" /> Assignee</label>
-                            <select value={form.assignee_id} onChange={e => setForm({ ...form, assignee_id: e.target.value })} className="input-field">
-                                <option value="">Unassigned</option>
-                                {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                            </select>
+                            <label className="label-field flex items-center gap-1"><User className="w-3 h-3" /> Assignees</label>
+                            <div className="border border-slate-200 rounded-lg p-2 max-h-32 overflow-y-auto bg-white">
+                                {members.map(m => {
+                                    const checked = form.assignee_ids.includes(m.id);
+                                    return (
+                                        <label key={m.id} className="flex items-center gap-2 py-1 text-xs text-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => {
+                                                    const next = checked
+                                                        ? form.assignee_ids.filter(id => id !== m.id)
+                                                        : [...form.assignee_ids, m.id];
+                                                    setForm({ ...form, assignee_ids: next });
+                                                }}
+                                            />
+                                            <span>{m.name}</span>
+                                        </label>
+                                    );
+                                })}
+                                {members.length === 0 && <p className="text-xs text-slate-400">No members found</p>}
+                            </div>
                         </div>
                         <div>
                             <label className="label-field flex items-center gap-1"><Hash className="w-3 h-3" /> Story Pts</label>

@@ -204,14 +204,13 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                 <div className="grid grid-cols-2 gap-6 bg-white p-5 rounded-xl border border-slate-200">
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Assignee</label>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center text-[10px] font-bold text-indigo-600 uppercase">
-                                                    {(members.find(m => m.id === task.assignee_id)?.name || 'U').charAt(0)}
-                                                </div>
-                                                <span className="text-sm font-medium text-slate-700">
-                                                    {members.find(m => m.id === task.assignee_id)?.name || 'Unassigned'}
-                                                </span>
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Assignees</label>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {(task.assignee_names?.length ? task.assignee_names : [members.find(m => m.id === task.assignee_id)?.name || 'Unassigned']).map((name, idx) => (
+                                                    <span key={`${name}-${idx}`} className="inline-flex items-center px-2 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold">
+                                                        {name}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </div>
                                         <div>

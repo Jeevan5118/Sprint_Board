@@ -71,6 +71,20 @@ BEGIN
         metadata JSONB,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS task_assignees (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+        task_id UUID NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(task_id, user_id)
+    );
+
+    INSERT INTO task_assignees (task_id, user_id)
+    SELECT id, assignee_id
+    FROM tasks
+    WHERE assignee_id IS NOT NULL
+    ON CONFLICT (task_id, user_id) DO NOTHING;
 END $$;
 `;
 

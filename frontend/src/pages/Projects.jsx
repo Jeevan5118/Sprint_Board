@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 import { Folder, Plus, Trash2, ArrowRight, Users, X } from 'lucide-react';
+import TaskModal from '../components/sprint/TaskModal';
 
 const STATUS_COLORS = {
     'Active': 'bg-green-100 text-green-800',
@@ -18,9 +19,11 @@ const Projects = ({ isPowerHour = false }) => {
     const [projects, setProjects] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [form, setForm] = useState({ name: '', description: '', team_id: '' });
     const canCreate = user?.role === 'Admin' || user?.role === 'Team Lead';
+    const canCreateTask = isPowerHour;
 
     const fetchData = async () => {
         try {
@@ -92,6 +95,7 @@ const Projects = ({ isPowerHour = false }) => {
     }
 
     const contextPath = isPowerHour ? 'power-hour-projects' : 'projects';
+    const workspaceTeamId = projects[0]?.team_id || teams[0]?.id || '';
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -104,11 +108,23 @@ const Projects = ({ isPowerHour = false }) => {
                             : `${projects.length} active projects across ${Object.keys(grouped).length} teams`}
                     </p>
                 </div>
-                {canCreate && (
-                    <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center">
-                        <Plus className="w-4 h-4 mr-2" /> New Project
-                    </button>
-                )}
+                <div className="flex items-center gap-2">
+                    {canCreateTask && (
+                        <button
+                            onClick={() => setIsTaskModalOpen(true)}
+                            className="btn-primary flex items-center"
+                            disabled={!workspaceTeamId}
+                            title={!workspaceTeamId ? 'No workspace team found yet' : 'Create Task'}
+                        >
+                            <Plus className="w-4 h-4 mr-2" /> New Task
+                        </button>
+                    )}
+                    {canCreate && !isPowerHour && (
+                        <button onClick={() => setIsModalOpen(true)} className="btn-primary flex items-center">
+                            <Plus className="w-4 h-4 mr-2" /> New Project
+                        </button>
+                    )}
+                </div>
             </div>
 
             {projects.length === 0 ? (
@@ -186,7 +202,7 @@ const Projects = ({ isPowerHour = false }) => {
                 </div>
             )}
 
-            {isModalOpen && (
+            {isModalOpen && !isPowerHour && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
                         <div className="flex justify-between items-center mb-5">
@@ -220,6 +236,22 @@ const Projects = ({ isPowerHour = false }) => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {isPowerHour && workspaceTeamId && (
+                <TaskModal
+                    isOpen={isTaskModalOpen}
+                    onClose={() => setIsTaskModalOpen(false)}
+                    onSaved={() => {
+                        toast.success('Task created');
+                        setIsTaskModalOpen(false);
+                    }}
+                    teamId={workspaceTeamId}
+                    sprintId={null}
+                    editTask={null}
+                    isPowerHour={true}
+                    defaultProjectId=""
+                />
             )}
         </div>
     );

@@ -3,6 +3,11 @@ import { createNotification, notifyAdminsAndLeads, notifyUsers } from '../servic
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
 
 const toBool = (value) => value === true || value === 'true';
+const normalizeAssigneeIds = (assigneeIds, fallbackAssigneeId = null) => {
+    const ids = Array.isArray(assigneeIds) ? assigneeIds : [];
+    const merged = fallbackAssigneeId ? [fallbackAssigneeId, ...ids] : ids;
+    return [...new Set(merged.filter(Boolean))];
+};
 
 const getTaskLink = (task, teamId) => {
     if (task?.is_power_hour) {
@@ -19,11 +24,19 @@ export const getTasks = async (req, res, next) => {
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
-                   lub.name AS last_updated_by_name
+                   lub.name AS last_updated_by_name,
+                   COALESCE(taa.assignee_ids, ARRAY[]::uuid[]) AS assignee_ids,
+                   COALESCE(taa.assignee_names, ARRAY[]::text[]) AS assignee_names
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
+            LEFT JOIN LATERAL (
+                SELECT ARRAY_AGG(ta.user_id) AS assignee_ids, ARRAY_AGG(u2.name) AS assignee_names
+                FROM task_assignees ta
+                JOIN users u2 ON u2.id = ta.user_id
+                WHERE ta.task_id = t.id
+            ) taa ON TRUE
             WHERE t.team_id = $1 AND (t.is_power_hour = $2 OR (t.is_power_hour IS NULL AND $2 = false))
         `;
         const params = [teamId, isPowerHourBool];
@@ -46,12 +59,12 @@ export const getTasks = async (req, res, next) => {
         }
 
         if (assignee_id) {
-            query += ` AND t.assignee_id = $${params.length + 1}`;
+            query += ` AND (t.assignee_id = $${params.length + 1} OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $${params.length + 1}))`;
             params.push(assignee_id);
         }
         // Logic 3: Restricted Member visibility
         if (req.user.role === 'Member' && !isPowerHourBool) {
-            query += ` AND t.assignee_id = $${params.length + 1}`;
+            query += ` AND (t.assignee_id = $${params.length + 1} OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $${params.length + 1}))`;
             params.push(req.user.id);
         }
 
@@ -69,17 +82,25 @@ export const getKanbanTasks = async (req, res, next) => {
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
-                   lub.name AS last_updated_by_name
+                   lub.name AS last_updated_by_name,
+                   COALESCE(taa.assignee_ids, ARRAY[]::uuid[]) AS assignee_ids,
+                   COALESCE(taa.assignee_names, ARRAY[]::text[]) AS assignee_names
             FROM tasks t
             LEFT JOIN projects p ON t.project_id = p.id
             LEFT JOIN users u ON t.assignee_id = u.id
             LEFT JOIN users lub ON t.last_updated_by_id = lub.id
+            LEFT JOIN LATERAL (
+                SELECT ARRAY_AGG(ta.user_id) AS assignee_ids, ARRAY_AGG(u2.name) AS assignee_names
+                FROM task_assignees ta
+                JOIN users u2 ON u2.id = ta.user_id
+                WHERE ta.task_id = t.id
+            ) taa ON TRUE
             WHERE t.team_id = $1 AND t.sprint_id IS NULL AND (t.is_power_hour = $2 OR (t.is_power_hour IS NULL AND $2 = false))
         `;
         let params = [teamId, isPowerHourBool];
         // Logic 3: Restricted Member visibility for Kanban
         if (req.user.role === 'Member' && !isPowerHourBool) {
-            query += ` AND t.assignee_id = $3`;
+            query += ` AND (t.assignee_id = $3 OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $3))`;
             params.push(req.user.id);
         }
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
@@ -102,9 +123,11 @@ export const createTask = async (req, res, next) => {
         const {
             title, description, type, priority, status,
             story_points, estimated_hours, due_date,
-            project_id, sprint_id, assignee_id, is_power_hour
+            project_id, sprint_id, assignee_id, assignee_ids, is_power_hour
         } = req.body;
         const isPowerHourBool = toBool(is_power_hour);
+        const resolvedAssigneeIds = normalizeAssigneeIds(assignee_ids, assignee_id);
+        const primaryAssigneeId = resolvedAssigneeIds[0] || null;
 
         if (!title) return res.status(400).json({ message: 'Title is required' });
         if (!isPowerHourBool && req.user.role === 'Member') {
@@ -148,8 +171,15 @@ export const createTask = async (req, res, next) => {
         const newTask = await db.query(insertQuery, [
             title, description, type || 'Task', priority || 'Medium', status || 'Backlog',
             story_points || 0, estimated_hours, due_date,
-            teamId, project_id, targetSprintId, assignee_id, req.user.id, newSortOrder, isPowerHourBool
+            teamId, project_id, targetSprintId, primaryAssigneeId, req.user.id, newSortOrder, isPowerHourBool
         ]);
+
+        if (resolvedAssigneeIds.length > 0) {
+            await db.query(
+                'INSERT INTO task_assignees (task_id, user_id) SELECT $1, UNNEST($2::uuid[])',
+                [newTask.rows[0].id, resolvedAssigneeIds]
+            );
+        }
 
         // Logic 14: Notification trigger when assigned & Notify Admins/Leads on creation
         const link = getTaskLink(
@@ -158,9 +188,10 @@ export const createTask = async (req, res, next) => {
         );
 
         // Notify Assignee
-        if (assignee_id && assignee_id !== req.user.id) {
+        for (const assignedId of resolvedAssigneeIds) {
+            if (assignedId === req.user.id) continue;
             await createNotification(
-                assignee_id,
+                assignedId,
                 'TaskAssigned',
                 `You were assigned to task: ${title}`,
                 link
@@ -177,7 +208,7 @@ export const createTask = async (req, res, next) => {
             { excludeUserId: req.user.id }
         );
 
-        res.status(201).json(newTask.rows[0]);
+        res.status(201).json({ ...newTask.rows[0], assignee_ids: resolvedAssigneeIds });
     } catch (error) {
         next(error);
     }
@@ -186,7 +217,14 @@ export const createTask = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
     try {
         const { id, teamId } = req.params;
-        const updates = req.body;
+        const updates = { ...req.body };
+        const hasAssigneeIdsUpdate = Object.prototype.hasOwnProperty.call(updates, 'assignee_ids');
+        const resolvedAssigneeIds = hasAssigneeIdsUpdate
+            ? normalizeAssigneeIds(updates.assignee_ids, updates.assignee_id)
+            : null;
+        if (hasAssigneeIdsUpdate) {
+            updates.assignee_id = resolvedAssigneeIds[0] || null;
+        }
         const allowedFields = new Set([
             'title', 'description', 'type', 'priority', 'status',
             'story_points', 'estimated_hours', 'due_date',
@@ -220,11 +258,33 @@ export const updateTask = async (req, res, next) => {
         const { rows } = await db.query(query, params);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
 
+        if (hasAssigneeIdsUpdate) {
+            await db.query('DELETE FROM task_assignees WHERE task_id = $1', [id]);
+            if (resolvedAssigneeIds.length > 0) {
+                await db.query(
+                    'INSERT INTO task_assignees (task_id, user_id) SELECT $1, UNNEST($2::uuid[])',
+                    [id, resolvedAssigneeIds]
+                );
+            }
+            rows[0].assignee_ids = resolvedAssigneeIds;
+        }
+
         // LOG HISTORY
         await logTaskChanges(id, req.user.id, oldTask, updates);
 
         // Logic 14: Notify user of the assignment specifically if the assignee ID was changed
-        if (updates.assignee_id && updates.assignee_id !== req.user.id) {
+        if (hasAssigneeIdsUpdate) {
+            const link = getTaskLink(rows[0], teamId);
+            for (const assignedId of resolvedAssigneeIds) {
+                if (assignedId === req.user.id) continue;
+                await createNotification(
+                    assignedId,
+                    'TaskUpdated',
+                    `You were assigned to an existing task: ${rows[0].title}`,
+                    link
+                );
+            }
+        } else if (updates.assignee_id && updates.assignee_id !== req.user.id) {
             const link = getTaskLink(rows[0], teamId);
             await createNotification(
                 updates.assignee_id,
@@ -355,6 +415,7 @@ export const deleteTask = async (req, res, next) => {
     try {
         const { id, teamId } = req.params;
         // Role check (Admin or Team Lead only) is done in routes
+        const assigneeRows = await db.query('SELECT user_id FROM task_assignees WHERE task_id = $1', [id]);
         const { rows } = await db.query('DELETE FROM tasks WHERE id = $1 AND team_id = $2 RETURNING *', [id, teamId]);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
 
@@ -371,9 +432,14 @@ export const deleteTask = async (req, res, next) => {
             { excludeUserId: req.user.id }
         );
 
-        if (deletedTask.assignee_id && deletedTask.assignee_id !== req.user.id) {
+        const assigneeIds = [...new Set([
+            deletedTask.assignee_id,
+            ...assigneeRows.rows.map(r => r.user_id)
+        ].filter(Boolean))];
+
+        if (assigneeIds.length > 0) {
             await notifyUsers(
-                [deletedTask.assignee_id],
+                assigneeIds.filter(uid => uid !== req.user.id),
                 'TaskDeleted',
                 `Task "${deletedTask.title}" assigned to you was deleted by ${actor}.`,
                 link
