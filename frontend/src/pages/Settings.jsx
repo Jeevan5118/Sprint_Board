@@ -406,7 +406,7 @@ const Settings = () => {
                     {activeTab === 'global_reports' && user?.role === 'Admin' && (
                         <div className="space-y-6 animate-in fade-in max-w-4xl mx-auto">
                             {/* Header & Date Configuration */}
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50">
+                            <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100/50 space-y-4">
                                 <div className="flex flex-col justify-center">
                                     <h2 className="text-lg font-bold text-emerald-900 flex items-center">
                                         <FileText className="w-5 h-5 mr-2 text-emerald-600" />
@@ -414,9 +414,9 @@ const Settings = () => {
                                     </h2>
                                     <p className="text-xs text-emerald-600 font-medium mt-1">Track daily reports and identify missing updates</p>
                                 </div>
-                                <div className="bg-white/80 border border-emerald-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <div className="relative group">
+                                <div className="w-full bg-white/90 border border-emerald-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+                                        <div className="relative group lg:col-span-4">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <Calendar className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                             </div>
@@ -427,16 +427,16 @@ const Settings = () => {
                                                 className="block w-full pl-10 pr-3 py-2 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-900 bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none transition-all"
                                             />
                                         </div>
-                                        <div className="flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
+                                        <div className="lg:col-span-8 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
                                             <button
                                                 onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
-                                                className={`flex-1 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
+                                                className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
                                             >
                                                 Reports
                                             </button>
                                             <button
                                                 onClick={() => fetchGlobalReports('Work', selectedDate, periodFilter, reportSearch)}
-                                                className={`flex-1 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'}`}
+                                                className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'}`}
                                             >
                                                 Work
                                             </button>
@@ -450,7 +450,7 @@ const Settings = () => {
                                                     setPeriodFilter(p);
                                                     fetchGlobalReports(reportFilter, selectedDate, p, reportSearch);
                                                 }}
-                                                className={`px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${periodFilter === p
+                                                className={`px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap border transition-all ${periodFilter === p
                                                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
                                                     : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50'
                                                     }`}
@@ -459,8 +459,8 @@ const Settings = () => {
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
-                                        <div className="relative group">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+                                        <div className="relative group lg:col-span-8">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <Search className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                             </div>
@@ -477,7 +477,7 @@ const Settings = () => {
                                         </div>
                                         <button
                                             onClick={() => fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch)}
-                                            className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-700 text-white hover:bg-emerald-800 transition-colors"
+                                            className="lg:col-span-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-emerald-700 text-white hover:bg-emerald-800 transition-colors"
                                         >
                                             Search
                                         </button>
@@ -486,7 +486,7 @@ const Settings = () => {
                                                 setReportSearch('');
                                                 fetchGlobalReports(reportFilter, selectedDate, periodFilter, '');
                                             }}
-                                            className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                                            className="lg:col-span-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
                                         >
                                             Clear
                                         </button>
