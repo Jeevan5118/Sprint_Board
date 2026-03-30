@@ -493,12 +493,12 @@ const Settings = () => {
                                                     <div className="px-4 pb-4 pt-2 space-y-3 animate-in slide-in-from-top-2 duration-300">
                                                         {reports.map(upload => (
                                                             <div key={upload.id} className="flex items-center justify-between p-4 bg-slate-50/50 border border-slate-100 rounded-xl hover:bg-white hover:border-slate-200 transition-all group">
-                                                                <div className="flex items-center min-w-0">
+                                                                <div className="flex items-center min-w-0 flex-1 mr-3">
                                                                     <div className={`p-2.5 rounded-xl mr-4 flex-shrink-0 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
                                                                         <FileText className="w-5 h-5" />
                                                                     </div>
-                                                                    <div className="truncate">
-                                                                        <p className="text-sm font-black text-slate-900 truncate">{upload.file_name}</p>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="text-sm font-black text-slate-900 truncate block">{upload.file_name}</p>
                                                                         <div className="flex items-center mt-0.5 space-x-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                                             <span className="flex items-center">
                                                                                 <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -509,7 +509,7 @@ const Settings = () => {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2 shrink-0">
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.preventDefault();
@@ -599,12 +599,12 @@ const Settings = () => {
                                     {globalReports.length > 0 ? (
                                         globalReports.map(upload => (
                                             <div key={upload.id} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl hover:border-indigo-200 hover:shadow-md transition-all group">
-                                                <div className="flex items-center min-w-0">
+                                                <div className="flex items-center min-w-0 flex-1 mr-3">
                                                     <div className={`p-2.5 rounded-xl mr-4 flex-shrink-0 ${upload.file_type === 'Report' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
                                                         <FileText className="w-5 h-5" />
                                                     </div>
-                                                    <div className="truncate">
-                                                        <p className="text-sm font-black text-slate-900 truncate">{upload.file_name}</p>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-black text-slate-900 truncate block">{upload.file_name}</p>
                                                         <div className="flex items-center mt-0.5 space-x-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                             <span className="flex items-center">
                                                                 <Clock className="w-3 h-3 mr-1" /> {new Date(upload.uploaded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -615,7 +615,7 @@ const Settings = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 shrink-0">
                                                     <button
                                                         onClick={(e) => {
                                                             e.preventDefault();

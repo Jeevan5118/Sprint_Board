@@ -419,7 +419,7 @@ const Dashboard = ({ isPowerHour = false }) => {
                                 recentUploads.slice(0, 5).map(upload => (
                                     <div key={upload.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-slate-900 truncate">{upload.file_name}</p>
+                                            <p className="text-sm font-bold text-slate-900 truncate block">{upload.file_name}</p>
                                             <div className="flex items-center mt-1 space-x-2 text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                                                 <span className={`px-1.5 py-0.5 rounded ${upload.file_type === 'Report' ? 'bg-blue-100 text-blue-600' : 'bg-indigo-100 text-indigo-600'}`}>
                                                     {upload.file_type}
@@ -438,7 +438,7 @@ const Dashboard = ({ isPowerHour = false }) => {
                                             href={upload.file_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="ml-4 p-2 text-slate-400 hover:text-primary-blue hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200"
+                                            className="ml-4 p-2 text-slate-400 hover:text-primary-blue hover:bg-white rounded-lg transition-all shadow-sm border border-transparent hover:border-slate-200 shrink-0"
                                         >
                                             <ArrowUpRight className="w-4 h-4" />
                                         </a>
