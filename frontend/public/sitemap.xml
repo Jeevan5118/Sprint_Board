@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/login</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/dashboard</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/power-hour-dashboard</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/teams</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/projects</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/power-hour-projects</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/timeline</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/notifications</loc>
+  </url>
+  <url>
+    <loc>https://sprint-board-frontend.vercel.app/settings</loc>
+  </url>
+</urlset>

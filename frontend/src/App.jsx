@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import SeoManager from './components/common/SeoManager';
 import { Toaster } from 'react-hot-toast';
 
 const AuthLayout = lazy(() => import('./layouts/AuthLayout'));
@@ -32,6 +33,7 @@ function App() {
         <Toaster position="top-right" />
         <Suspense fallback={<RouteLoader />}>
           <Router>
+            <SeoManager />
             <Routes>
               {/* Public routing */}
               <Route path="/" element={<Navigate to="/login" replace />} />
