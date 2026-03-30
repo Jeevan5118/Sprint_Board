@@ -95,6 +95,7 @@ const Dashboard = ({ isPowerHour = false }) => {
     const [isSubmittingReport, setIsSubmittingReport] = useState(false);
     const [isUploadingWork, setIsUploadingWork] = useState(false);
     const [recentUploads, setRecentUploads] = useState([]);
+    const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 
     const normalizeDashboardData = (raw) => ({
         analytics: {
@@ -141,17 +142,32 @@ const Dashboard = ({ isPowerHour = false }) => {
         }
     };
 
+    const resolveUploadTeamId = async () => {
+        if (data?.teams?.length > 0) return data.teams[0].id;
+        try {
+            const { data: teams } = await api.get(`/teams?is_power_hour=${isPowerHour}`);
+            return Array.isArray(teams) && teams.length > 0 ? teams[0].id : null;
+        } catch {
+            return null;
+        }
+    };
+
     const handleReportSubmit = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        if (file.size > MAX_UPLOAD_BYTES) {
+            toast.error('File too large. Maximum allowed size is 50MB.');
+            e.target.value = '';
+            return;
+        }
 
         setIsSubmittingReport(true);
         const formData = new FormData();
         formData.append('report', file);
         formData.append('is_power_hour', isPowerHour);
-        // Automatically attach to the first team if available
-        if (data?.teams?.length > 0) {
-            formData.append('teamId', data.teams[0].id);
+        const teamId = await resolveUploadTeamId();
+        if (teamId) {
+            formData.append('teamId', teamId);
         }
 
         const loadingToast = toast.loading(`Uploading ${file.name} to internal storage...`);
@@ -173,14 +189,19 @@ const Dashboard = ({ isPowerHour = false }) => {
     const handleWorkUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        if (file.size > MAX_UPLOAD_BYTES) {
+            toast.error('File too large. Maximum allowed size is 50MB.');
+            e.target.value = '';
+            return;
+        }
 
         setIsUploadingWork(true);
         const formData = new FormData();
         formData.append('work', file);
         formData.append('is_power_hour', isPowerHour);
-        // Automatically attach to the first team if available
-        if (data?.teams?.length > 0) {
-            formData.append('teamId', data.teams[0].id);
+        const teamId = await resolveUploadTeamId();
+        if (teamId) {
+            formData.append('teamId', teamId);
         }
 
         const loadingToast = toast.loading(`Uploading ${file.name} to internal storage...`);

@@ -1,35 +1,49 @@
 import db from '../config/db.js';
 import { notifyAdmins, notifyTeamLeads } from '../services/notificationService.js';
 
+const resolveUploadTeamId = async (requestedTeamId, userId, role) => {
+    if (role === 'Admin') {
+        return requestedTeamId || null;
+    }
+
+    if (requestedTeamId) {
+        const memberCheck = await db.query(
+            'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+            [requestedTeamId, userId]
+        );
+        if (memberCheck.rows.length > 0) return requestedTeamId;
+    }
+
+    const membership = await db.query(
+        'SELECT team_id FROM team_members WHERE user_id = $1 ORDER BY joined_at ASC LIMIT 1',
+        [userId]
+    );
+
+    return membership.rows[0]?.team_id || null;
+};
+
 export const submitReport = async (req, res, next) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No report file provided' });
 
         const userId = req.user.id;
         const { teamId, summary } = req.body;
+        const resolvedTeamId = await resolveUploadTeamId(teamId, userId, req.user.role);
         const fileName = req.file.originalname;
 
-        console.log(`Storing Structured Report in Database: ${fileName} for user ${userId}, team ${teamId}`);
-
-        // If teamId is provided, verify user belongs to it
-        if (teamId) {
-            const memberCheck = await db.query('SELECT * FROM team_members WHERE team_id = $1 AND user_id = $2', [teamId, userId]);
-            if (memberCheck.rows.length === 0 && req.user.role !== 'Admin') {
-                return res.status(403).json({ message: 'You are not a member of this team' });
-            }
-        }
+        console.log(`Storing Structured Report in Database: ${fileName} for user ${userId}, team ${resolvedTeamId}`);
 
         const newUpload = await db.query(
             'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
-            [userId, teamId || null, fileName, req.file.buffer, 'Report', req.file.mimetype, JSON.stringify({ summary })]
+            [userId, resolvedTeamId, fileName, req.file.buffer, 'Report', req.file.mimetype, JSON.stringify({ summary })]
         );
 
         // Notify Admins and Team Leads
         const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const uName = userRows[0]?.name || 'A user';
         await notifyAdmins('Reports', `${uName} submitted their daily report.`, `/settings`, { excludeUserId: userId });
-        if (teamId) {
-            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted their daily report.`, `/settings`, { excludeUserId: userId });
+        if (resolvedTeamId) {
+            await notifyTeamLeads(resolvedTeamId, 'Reports', `${uName} submitted their daily report.`, `/settings`, { excludeUserId: userId });
         }
 
         res.status(200).json({
@@ -51,21 +65,22 @@ export const uploadWork = async (req, res, next) => {
 
         const userId = req.user.id;
         const { teamId, description } = req.body;
+        const resolvedTeamId = await resolveUploadTeamId(teamId, userId, req.user.role);
         const fileName = req.file.originalname;
 
-        console.log(`Storing Structured Work in Database: ${fileName} for user ${userId}, team ${teamId}`);
+        console.log(`Storing Structured Work in Database: ${fileName} for user ${userId}, team ${resolvedTeamId}`);
 
         const newUpload = await db.query(
             'INSERT INTO user_uploads (user_id, team_id, file_name, file_data, file_type, mimetype, metadata) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, file_name, uploaded_at',
-            [userId, teamId || null, fileName, req.file.buffer, 'Work', req.file.mimetype, JSON.stringify({ description })]
+            [userId, resolvedTeamId, fileName, req.file.buffer, 'Work', req.file.mimetype, JSON.stringify({ description })]
         );
 
         // Notify Admins and Team Leads
         const { rows: userRows } = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
         const uName = userRows[0]?.name || 'A user';
         await notifyAdmins('Reports', `${uName} submitted work.`, `/settings`, { excludeUserId: userId });
-        if (teamId) {
-            await notifyTeamLeads(teamId, 'Reports', `${uName} submitted work.`, `/settings`, { excludeUserId: userId });
+        if (resolvedTeamId) {
+            await notifyTeamLeads(resolvedTeamId, 'Reports', `${uName} submitted work.`, `/settings`, { excludeUserId: userId });
         }
 
         res.status(200).json({
@@ -105,14 +120,20 @@ export const getUploads = async (req, res, next) => {
                 query += ` AND u.team_id = $${params.length}`;
             }
         } else if (req.user.role === 'Team Lead') {
-            // Team Lead can see their own and their teams' uploads
-            // For now, simplify to just their own unless teamId is provided and they lead it
+            // Team Lead sees uploads for teams they belong to + their own personal uploads
             if (teamId) {
+                const membership = await db.query(
+                    'SELECT 1 FROM team_members WHERE team_id = $1 AND user_id = $2',
+                    [teamId, req.user.id]
+                );
+                if (membership.rows.length === 0) {
+                    return res.status(403).json({ message: 'You are not allowed to view uploads for this team' });
+                }
                 params.push(teamId);
                 query += ` AND u.team_id = $${params.length}`;
             } else {
                 params.push(req.user.id);
-                query += ` AND u.user_id = $${params.length}`;
+                query += ` AND (u.user_id = $${params.length} OR u.team_id IN (SELECT team_id FROM team_members WHERE user_id = $${params.length}))`;
             }
         } else {
             // Member only sees their own

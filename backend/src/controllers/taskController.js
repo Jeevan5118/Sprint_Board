@@ -173,6 +173,11 @@ export const updateTask = async (req, res, next) => {
     try {
         const { id, teamId } = req.params;
         const updates = req.body;
+        const allowedFields = new Set([
+            'title', 'description', 'type', 'priority', 'status',
+            'story_points', 'estimated_hours', 'due_date',
+            'project_id', 'sprint_id', 'assignee_id', 'is_power_hour', 'sort_order'
+        ]);
 
         // Fetch old state for history
         const { rows: oldTaskRows } = await db.query('SELECT * FROM tasks WHERE id = $1', [id]);
@@ -180,12 +185,16 @@ export const updateTask = async (req, res, next) => {
         const oldTask = oldTaskRows[0];
 
         // Perform update
-        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $' + (Object.keys(updates).filter(k => !['id', 'team_id', 'creator_id', 'created_at'].includes(k)).length + 1);
+        const filteredEntries = Object.entries(updates).filter(([key]) => allowedFields.has(key));
+        if (filteredEntries.length === 0) {
+            return res.status(400).json({ message: 'No valid fields to update' });
+        }
+
+        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $' + (filteredEntries.length + 1);
         let params = [];
         let count = 1;
 
-        for (const [key, value] of Object.entries(updates)) {
-            if (['id', 'team_id', 'creator_id', 'created_at'].includes(key)) continue;
+        for (const [key, value] of filteredEntries) {
             query += `, ${key} = $${count}`;
             params.push(value);
             count++;
