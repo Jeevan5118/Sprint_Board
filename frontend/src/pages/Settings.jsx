@@ -247,6 +247,13 @@ const Settings = () => {
         }
     };
 
+    const buildDownloadUrl = (fileUrl) => {
+        const absolute = getAbsoluteFileUrl(fileUrl || '');
+        const token = localStorage.getItem('token');
+        if (!token) return absolute;
+        return `${absolute}${absolute.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+    };
+
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
@@ -696,7 +703,7 @@ const Settings = () => {
                                                                         <Eye className="w-5 h-5" />
                                                                     </button>
                                                                     <a
-                                                                        href={`${upload.file_url}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                                        href={buildDownloadUrl(upload.file_url)}
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
@@ -878,7 +885,7 @@ const Settings = () => {
                                                         <Eye className="w-5 h-5" />
                                                     </button>
                                                     <a
-                                                        href={`${getAbsoluteFileUrl(upload.file_url)}${upload.file_url.includes('?') ? '&' : '?'}token=${localStorage.getItem('token')}`}
+                                                        href={buildDownloadUrl(upload.file_url)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="flex-shrink-0 p-2.5 bg-white text-slate-400 hover:text-emerald-600 hover:shadow-md rounded-xl transition-all border border-slate-200 hover:border-emerald-200 group-hover:-translate-y-0.5"
