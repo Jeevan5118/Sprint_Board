@@ -40,6 +40,9 @@ const Settings = () => {
     const [isLoadingReports, setIsLoadingReports] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [auditData, setAuditData] = useState([]);
+    const [selectedMissingMember, setSelectedMissingMember] = useState(null);
+    const [missingReason, setMissingReason] = useState('');
+    const [isSavingMissingReason, setIsSavingMissingReason] = useState(false);
     const [expandedMembers, setExpandedMembers] = useState({});
     const [previewFile, setPreviewFile] = useState(null);
     const searchDebounceRef = useRef(null);
@@ -223,6 +226,40 @@ const Settings = () => {
             ...prev,
             [memberName]: !prev[memberName]
         }));
+    };
+
+    const openMissingReasonModal = (member) => {
+        setSelectedMissingMember(member);
+        setMissingReason(member?.missing_reason || '');
+    };
+
+    const closeMissingReasonModal = () => {
+        setSelectedMissingMember(null);
+        setMissingReason('');
+        setIsSavingMissingReason(false);
+    };
+
+    const handleSaveMissingReason = async () => {
+        if (!selectedMissingMember?.id) return;
+        const reasonText = missingReason.trim();
+        if (!reasonText) {
+            toast.error('Please enter a reason');
+            return;
+        }
+        setIsSavingMissingReason(true);
+        try {
+            await api.post('/reports/audit/comment', {
+                targetUserId: selectedMissingMember.id,
+                auditDate: selectedDate,
+                comment: reasonText
+            });
+            toast.success(`Saved reason for ${selectedMissingMember.name}`);
+            await fetchReportAudit(selectedDate);
+            closeMissingReasonModal();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to save reason');
+            setIsSavingMissingReason(false);
+        }
     };
 
     const handleCreateUser = async (e) => {
@@ -620,7 +657,16 @@ const Settings = () => {
                                                 </div>
                                                 <div className="mt-4 flex flex-wrap gap-1.5">
                                                     {auditData.filter(m => !m.has_submitted).map(m => (
-                                                        <span key={m.id} className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded-md border border-rose-100/50">{m.name}</span>
+                                                        <button
+                                                            key={m.id}
+                                                            type="button"
+                                                            onClick={() => openMissingReasonModal(m)}
+                                                            className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded-md border border-rose-100/50 hover:bg-rose-100 hover:border-rose-200 transition-colors"
+                                                            title={m.missing_reason ? `Reason: ${m.missing_reason}` : 'Add reason for missing submission'}
+                                                        >
+                                                            {m.name}
+                                                            {m.missing_reason ? ' *' : ''}
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -916,6 +962,61 @@ const Settings = () => {
                     file={previewFile}
                     onClose={() => setPreviewFile(null)}
                 />
+            )}
+
+            {selectedMissingMember && (
+                <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg bg-white rounded-2xl border border-slate-200 shadow-xl">
+                        <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Missing Submission Reason</h3>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    {selectedMissingMember.name} • {selectedDate}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={closeMissingReasonModal}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                title="Close"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-3">
+                            <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                                Admin Note
+                            </label>
+                            <textarea
+                                value={missingReason}
+                                onChange={(e) => setMissingReason(e.target.value)}
+                                rows={5}
+                                placeholder="Enter why this member has not submitted the report..."
+                                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 outline-none resize-none"
+                            />
+                            <p className="text-[11px] text-slate-500">
+                                This note will be visible in audit and the member will receive a notification.
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={closeMissingReasonModal}
+                                className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveMissingReason}
+                                disabled={isSavingMissingReason}
+                                className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-60 transition-colors"
+                            >
+                                {isSavingMissingReason ? 'Saving...' : 'Save Reason'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

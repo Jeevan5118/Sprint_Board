@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { submitReport, uploadWork, getUploads, getReportAudit } from '../controllers/reportController.js';
+import { submitReport, uploadWork, getUploads, getReportAudit, upsertReportAuditComment } from '../controllers/reportController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { upload } from '../middlewares/uploadMiddleware.js';
 
@@ -25,5 +25,6 @@ router.post('/work', protect, safeSingle('work'), uploadWork);
 // Retrieval endpoints
 router.get('/', protect, getUploads);
 router.get('/audit', protect, getReportAudit);
+router.post('/audit/comment', protect, upsertReportAuditComment);
 
 export default router;

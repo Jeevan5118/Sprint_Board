@@ -1,5 +1,5 @@
 import db from '../config/db.js';
-import { notifyAdmins, notifyTeamLeads } from '../services/notificationService.js';
+import { createNotification, notifyAdmins, notifyTeamLeads } from '../services/notificationService.js';
 
 const resolveUploadTeamId = async (requestedTeamId, userId, role) => {
     if (role === 'Admin') {
@@ -204,12 +204,18 @@ export const getReportAudit = async (req, res, next) => {
                     WHERE up.user_id = u.id 
                     AND up.file_type = 'Report' 
                     AND up.uploaded_at::date = $1::date
-                ) as has_submitted
+                ) as has_submitted,
+                rac.comment as missing_reason,
+                rac.created_at as missing_reason_created_at,
+                rac.updated_at as missing_reason_updated_at,
+                au.name as missing_reason_by
             FROM users u
             JOIN team_members tm ON u.id = tm.user_id
             JOIN teams t ON tm.team_id = t.id
+            LEFT JOIN report_audit_comments rac ON rac.target_user_id = u.id AND rac.audit_date = $1::date
+            LEFT JOIN users au ON au.id = rac.admin_user_id
             WHERE u.role IN ('Member', 'Team Lead')
-            GROUP BY u.id, u.name, u.role, u.email
+            GROUP BY u.id, u.name, u.role, u.email, rac.comment, rac.created_at, rac.updated_at, au.name
             ORDER BY u.name ASC
         `;
 
@@ -218,5 +224,60 @@ export const getReportAudit = async (req, res, next) => {
     } catch (error) {
         console.error('Report Audit Error:', error.message);
         res.status(500).json({ message: 'Failed to generate report audit' });
+    }
+};
+
+/**
+ * Add/update missing submission reason for a member/date (Admin only)
+ */
+export const upsertReportAuditComment = async (req, res) => {
+    try {
+        if (req.user.role !== 'Admin') {
+            return res.status(403).json({ message: 'Only Admin can add missing submission reasons' });
+        }
+
+        const { targetUserId, auditDate, comment } = req.body;
+        const trimmedComment = (comment || '').trim();
+
+        if (!targetUserId || !auditDate || !trimmedComment) {
+            return res.status(400).json({ message: 'targetUserId, auditDate and comment are required' });
+        }
+
+        const membershipCheck = await db.query(
+            'SELECT id, name FROM users WHERE id = $1 AND role IN (\'Member\', \'Team Lead\')',
+            [targetUserId]
+        );
+        if (membershipCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'Target member not found' });
+        }
+
+        const upsertQuery = `
+            INSERT INTO report_audit_comments (target_user_id, audit_date, admin_user_id, comment)
+            VALUES ($1, $2::date, $3, $4)
+            ON CONFLICT (target_user_id, audit_date)
+            DO UPDATE SET
+                admin_user_id = EXCLUDED.admin_user_id,
+                comment = EXCLUDED.comment,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING id, target_user_id, audit_date, admin_user_id, comment, created_at, updated_at
+        `;
+
+        const { rows } = await db.query(upsertQuery, [targetUserId, auditDate, req.user.id, trimmedComment]);
+
+        const targetName = membershipCheck.rows[0].name || 'Member';
+        await createNotification(
+            targetUserId,
+            'Reports',
+            `Admin added a missing report reason for ${auditDate}: ${trimmedComment}`,
+            '/settings'
+        );
+
+        res.status(200).json({
+            message: `Missing submission reason saved for ${targetName}`,
+            data: rows[0]
+        });
+    } catch (error) {
+        console.error('Report Audit Comment Error:', error.message);
+        res.status(500).json({ message: 'Failed to save missing submission reason' });
     }
 };

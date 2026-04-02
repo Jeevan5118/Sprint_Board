@@ -53,6 +53,20 @@ BEGIN
         metadata JSONB,
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS report_audit_comments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+        target_user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        audit_date DATE NOT NULL,
+        admin_user_id UUID NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(target_user_id, audit_date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_report_audit_comments_audit_date
+        ON report_audit_comments (audit_date);
 END $$;
 `;
 
