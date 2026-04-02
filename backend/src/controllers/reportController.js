@@ -197,7 +197,7 @@ export const getReportAudit = async (req, res, next) => {
                 u.name, 
                 u.role, 
                 u.email,
-                t.name as team_name,
+                STRING_AGG(DISTINCT t.name, ', ') as team_name,
                 EXISTS (
                     SELECT 1 
                     FROM user_uploads up 
@@ -206,9 +206,10 @@ export const getReportAudit = async (req, res, next) => {
                     AND up.uploaded_at::date = $1::date
                 ) as has_submitted
             FROM users u
-            LEFT JOIN team_members tm ON u.id = tm.user_id
-            LEFT JOIN teams t ON tm.team_id = t.id
+            JOIN team_members tm ON u.id = tm.user_id
+            JOIN teams t ON tm.team_id = t.id
             WHERE u.role IN ('Member', 'Team Lead')
+            GROUP BY u.id, u.name, u.role, u.email
             ORDER BY u.name ASC
         `;
 
