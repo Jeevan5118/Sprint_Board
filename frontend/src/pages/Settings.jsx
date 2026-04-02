@@ -291,6 +291,10 @@ const Settings = () => {
         return `${absolute}${absolute.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
     };
 
+    const submittedMembers = auditData.filter((m) => m.has_submitted);
+    const missingWithReason = auditData.filter((m) => !m.has_submitted && (m.missing_reason || '').trim());
+    const missingWithoutReason = auditData.filter((m) => !m.has_submitted && !(m.missing_reason || '').trim());
+
     return (
         <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
             <div>
@@ -627,19 +631,19 @@ const Settings = () => {
                                 <div className="space-y-6">
                                     {/* Submission Audit Summary (Only for Daily Reports) */}
                                     {reportFilter === 'Report' && periodFilter === 'day' && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-emerald-200 transition-all">
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Submissions Received</p>
-                                                        <p className="text-3xl font-black text-emerald-600 mt-1">{auditData.filter(m => m.has_submitted).length}</p>
+                                                        <p className="text-3xl font-black text-emerald-600 mt-1">{submittedMembers.length}</p>
                                                     </div>
                                                     <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
                                                         <CheckCircle2 className="w-6 h-6" />
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 flex flex-wrap gap-1.5">
-                                                    {auditData.filter(m => m.has_submitted).map(m => (
+                                                    {submittedMembers.map(m => (
                                                         <span key={m.id} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100/50">{m.name}</span>
                                                     ))}
                                                 </div>
@@ -649,23 +653,50 @@ const Settings = () => {
                                                 <div className="flex items-center justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Missing Updates</p>
-                                                        <p className="text-3xl font-black text-rose-500 mt-1">{auditData.filter(m => !m.has_submitted).length}</p>
+                                                        <p className="text-3xl font-black text-rose-500 mt-1">{missingWithoutReason.length}</p>
                                                     </div>
                                                     <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform">
                                                         <AlertCircle className="w-6 h-6" />
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 flex flex-wrap gap-1.5">
-                                                    {auditData.filter(m => !m.has_submitted).map(m => (
+                                                    {missingWithoutReason.map(m => (
                                                         <button
                                                             key={m.id}
                                                             type="button"
                                                             onClick={() => openMissingReasonModal(m)}
                                                             className="text-[10px] font-bold bg-rose-50 text-rose-700 px-2 py-1 rounded-md border border-rose-100/50 hover:bg-rose-100 hover:border-rose-200 transition-colors"
-                                                            title={m.missing_reason ? `Reason: ${m.missing_reason}` : 'Add reason for missing submission'}
+                                                            title="Add reason for missing submission"
                                                         >
                                                             {m.name}
-                                                            {m.missing_reason ? ' *' : ''}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm group hover:border-amber-200 transition-all">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason Provided</p>
+                                                        <p className="text-3xl font-black text-amber-600 mt-1">{missingWithReason.length}</p>
+                                                    </div>
+                                                    <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform">
+                                                        <FileText className="w-6 h-6" />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 space-y-2">
+                                                    {missingWithReason.map((m) => (
+                                                        <button
+                                                            key={m.id}
+                                                            type="button"
+                                                            onClick={() => openMissingReasonModal(m)}
+                                                            className="w-full text-left text-[10px] bg-amber-50/80 text-amber-900 px-2 py-1.5 rounded-md border border-amber-100 hover:bg-amber-100 transition-colors"
+                                                            title="Click to edit reason"
+                                                        >
+                                                            <span className="font-black">{m.name}</span>
+                                                            <span className="block mt-0.5 text-[10px] font-semibold text-amber-800 break-words">
+                                                                {m.missing_reason}
+                                                            </span>
                                                         </button>
                                                     ))}
                                                 </div>
