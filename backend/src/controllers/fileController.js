@@ -24,6 +24,10 @@ const sendFileResponse = (res, file, isInline) => {
         data = Buffer.from(file.file_data, 'binary');
     }
 
+    // Crucial for memory: Clear the original raw data from the temporary object
+    // before we start sending the response, to help GC on small memory instances.
+    file.file_data = null;
+
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Length', data.length);
 
