@@ -27,12 +27,13 @@ const sendFileResponse = (res, file, isInline) => {
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Length', data.length);
 
+    const encodedName = encodeURIComponent(file.file_name);
     if (isInline) {
-        res.setHeader('Content-Disposition', 'inline');
+        res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedName}`);
         res.removeHeader('X-Frame-Options');
         res.setHeader('Content-Security-Policy', "frame-ancestors *");
     } else {
-        res.setHeader('Content-Disposition', `attachment; filename="${file.file_name}"`);
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodedName}`);
     }
 
     res.end(data);
