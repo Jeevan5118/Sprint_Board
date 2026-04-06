@@ -167,11 +167,14 @@ export const getUploads = async (req, res, next) => {
 
         // Add internal URLs for convenience
         const uploads = rows.map(u => {
-            const baseUrl = process.env.BACKEND_URL || '';
+            let baseUrl = (process.env.BACKEND_URL || '').replace(/\/+$/, '');
             const path = `/api/v1/files/uploads/${u.id}`;
+
+            // If no baseUrl, return relative path (Vercel will proxy this)
+            // If baseUrl exists, ensure it's absolute
             return {
                 ...u,
-                file_url: baseUrl.startsWith('http') ? `${baseUrl}${path}` : path
+                file_url: baseUrl ? `${baseUrl}${path}` : path
             };
         });
 

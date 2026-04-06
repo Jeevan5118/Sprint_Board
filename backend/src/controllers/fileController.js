@@ -14,9 +14,15 @@ const sendFileResponse = (res, file, isInline) => {
     else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mimetype = 'image/jpeg';
 
     // Ensure file_data is a proper Buffer (handles pg bytea hex strings)
-    const data = Buffer.isBuffer(file.file_data)
-        ? file.file_data
-        : Buffer.from(file.file_data, 'binary');
+    let data;
+    if (Buffer.isBuffer(file.file_data)) {
+        data = file.file_data;
+    } else if (typeof file.file_data === 'string' && file.file_data.startsWith('\\x')) {
+        // Handle PostgreSQL hex format
+        data = Buffer.from(file.file_data.substring(2), 'hex');
+    } else {
+        data = Buffer.from(file.file_data, 'binary');
+    }
 
     res.setHeader('Content-Type', mimetype);
     res.setHeader('Content-Length', data.length);
