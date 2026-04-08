@@ -1049,11 +1049,11 @@ const Settings = () => {
                                         </button>
                                     </div>
                                 </div>
-                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
+                        {activeTab === 'global_reports' && (
+                            <div className="space-y-6 animate-in fade-in">
                             {isLoadingReports ? (
                                 <div className="flex flex-col items-center justify-center py-20 animate-pulse">
                                     <div className="w-12 h-12 border-4 border-indigo-100 rounded-full border-t-indigo-500 animate-spin"></div>
