@@ -198,6 +198,30 @@ const SprintBoard = ({ isPowerHour = false }) => {
         }
     };
 
+    const getDaysRemaining = (endDate) => {
+        if (!endDate) return null;
+        const diff = new Date(endDate) - new Date();
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        if (days < 0) return 'Sprint Overdue';
+        if (days === 0) return 'Ends Today';
+        if (days === 1) return 'Ends Tomorrow';
+        return `${days} Days Remaining`;
+    };
+
+    if (loading) return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-primary-blue animate-spin"></div></div>;
+
+    if (!activeSprint) return (
+        <div className="flex flex-col items-center justify-center h-full text-slate-500">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">No Active Sprint</h2>
+            <p>Start a sprint from the Sprints page to see the board.</p>
+        </div>
+    );
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
