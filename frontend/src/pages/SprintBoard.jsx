@@ -317,10 +317,10 @@ const SprintBoard = ({ isPowerHour = false }) => {
                                                 className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 hover:bg-slate-50 ${filteredUserId === member.id ? 'text-primary-blue font-bold bg-blue-50/50' : 'text-slate-600'}`}
                                             >
                                                 <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">
-                                                    {member.name.charAt(0).toUpperCase()}
+                                                    {member.name?.charAt(0).toUpperCase() || '?'}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="truncate">{member.name}</p>
+                                                    <p className="truncate">{member.name || 'Unknown User'}</p>
                                                     <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
                                                 </div>
                                             </button>
