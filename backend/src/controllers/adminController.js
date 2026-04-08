@@ -35,11 +35,48 @@ export const createUser = async (req, res, next) => {
 
         // Create user
         const newUser = await db.query(
-            'INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id, name, email, role, avatar_url',
+            'INSERT INTO users (full_name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id, full_name as name, email, role, avatar_url',
             [name, email, passwordHash, role]
         );
 
         res.status(201).json({ message: 'User created successfully', data: newUser.rows[0] });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getUsers = async (req, res, next) => {
+    try {
+        const result = await db.query(`
+            SELECT u.id, u.full_name as name, u.email, u.role, u.avatar_url, u.created_at,
+                   string_agg(t.name, ', ') as team_names
+            FROM users u
+            LEFT JOIN team_members tm ON u.id = tm.user_id
+            LEFT JOIN teams t ON tm.team_id = t.id
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateUserPassword = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+        const { newPassword } = req.body;
+
+        if (!newPassword || newPassword.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(newPassword, salt);
+
+        await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+
+        res.json({ message: 'Password updated successfully' });
     } catch (error) {
         next(error);
     }

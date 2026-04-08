@@ -47,6 +47,15 @@ const Settings = () => {
     const [previewFile, setPreviewFile] = useState(null);
     const searchDebounceRef = useRef(null);
 
+    // Admin User Listing State
+    const [users, setUsers] = useState([]);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [userSearch, setUserSearch] = useState('');
+    const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
+    const [adminNewPassword, setAdminNewPassword] = useState('');
+    const [isSavingAdminPassword, setIsSavingAdminPassword] = useState(false);
+    const [showAdminResetPassword, setShowAdminResetPassword] = useState(false);
+
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
         setIsSavingProfile(true);
@@ -77,11 +86,40 @@ const Settings = () => {
     };
 
 
-    // Fetch teams when Admin tab is opened
+    // Fetch teams and users when Admin tab is opened
     const handleAdminTabClick = async () => {
         setActiveTab('admin_users');
         if (teams.length === 0) {
             try { const res = await api.get('/teams'); setTeams(res.data); } catch { /* ignore */ }
+        }
+        fetchUsers();
+    };
+
+    const fetchUsers = async () => {
+        setIsLoadingUsers(true);
+        try {
+            const res = await api.get('/admin/users');
+            setUsers(res.data);
+        } catch (err) {
+            toast.error('Failed to fetch user list');
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+
+    const handleAdminPasswordReset = async (e) => {
+        e.preventDefault();
+        if (!selectedUserForPassword || !adminNewPassword) return;
+        setIsSavingAdminPassword(true);
+        try {
+            await api.put(`/admin/users/${selectedUserForPassword.id}/password`, { newPassword: adminNewPassword });
+            toast.success(`Password reset for ${selectedUserForPassword.name}`);
+            setAdminNewPassword('');
+            setSelectedUserForPassword(null);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to reset password');
+        } finally {
+            setIsSavingAdminPassword(false);
         }
     };
 
@@ -448,56 +486,146 @@ const Settings = () => {
                     )}
 
                     {activeTab === 'admin_users' && user?.role === 'Admin' && (
-                        <div className="max-w-xl animate-in fade-in">
-                            <h2 className="text-lg font-semibold text-indigo-900 mb-6 border-b border-slate-100 pb-2 flex items-center">
-                                <Users className="w-5 h-5 mr-2 text-indigo-600" />
-                                Create New Account
-                            </h2>
-                            <form onSubmit={handleCreateUser} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="label-field">Full Name</label>
-                                        <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} required className="input-field" placeholder="John Doe" />
+                        <div className="space-y-10 animate-in fade-in max-w-4xl mx-auto">
+                            {/* Create New Account Form */}
+                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+                                    <User className="w-5 h-5 mr-2 text-indigo-600" />
+                                    Create New Account
+                                </h2>
+                                <form onSubmit={handleCreateUser} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="label-field">Full Name</label>
+                                            <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} required className="input-field" placeholder="John Doe" />
+                                        </div>
+                                        <div>
+                                            <label className="label-field">Role</label>
+                                            <select value={newUserRole} onChange={e => setNewUserRole(e.target.value)} required className="input-field">
+                                                <option value="Member">Member</option>
+                                                <option value="Team Lead">Team Lead</option>
+                                                <option value="Admin">Admin</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="label-field">Role</label>
-                                        <select value={newUserRole} onChange={e => setNewUserRole(e.target.value)} required className="input-field">
-                                            <option value="Member">Member</option>
-                                            <option value="Team Lead">Team Lead</option>
-                                            <option value="Admin">Admin</option>
+                                        <label className="label-field">Email Address</label>
+                                        <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required className="input-field" placeholder="user@sprintboard.com" />
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Temporary Password</label>
+                                        <div className="relative">
+                                            <input type={showAdminPassword ? "text" : "password"} value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required minLength={8} className="input-field pr-10" placeholder="••••••••" />
+                                            <button
+                                                type="button"
+                                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                                onClick={() => setShowAdminPassword(!showAdminPassword)}
+                                            >
+                                                {showAdminPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label-field">Assign to Team (Optional)</label>
+                                        <select value={newUserTeamId} onChange={e => setNewUserTeamId(e.target.value)} className="input-field">
+                                            <option value="">No team assignment</option>
+                                            {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                         </select>
                                     </div>
-                                </div>
-                                <div>
-                                    <label className="label-field">Email Address</label>
-                                    <input type="email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required className="input-field" placeholder="user@sprintboard.com" />
-                                </div>
-                                <div>
-                                    <label className="label-field">Temporary Password</label>
-                                    <div className="relative">
-                                        <input type={showAdminPassword ? "text" : "password"} value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required minLength={8} className="input-field pr-10" placeholder="••••••••" />
-                                        <button
-                                            type="button"
-                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                                            onClick={() => setShowAdminPassword(!showAdminPassword)}
-                                        >
-                                            {showAdminPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                    <div className="pt-4 flex justify-end">
+                                        <button type="submit" disabled={isCreatingUser} className="btn-primary">
+                                            {isCreatingUser ? 'Creating...' : 'Create Account'}
                                         </button>
                                     </div>
+                                </form>
+                            </div>
+
+                            {/* User Management List */}
+                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                    <h2 className="text-lg font-bold text-slate-900 flex items-center">
+                                        <Users className="w-5 h-5 mr-2 text-indigo-600" />
+                                        System User Accounts
+                                    </h2>
+                                    <div className="relative w-full md:w-64">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={userSearch}
+                                            onChange={(e) => setUserSearch(e.target.value)}
+                                            placeholder="Search users..."
+                                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all"
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="label-field">Assign to Team (Optional)</label>
-                                    <select value={newUserTeamId} onChange={e => setNewUserTeamId(e.target.value)} className="input-field">
-                                        <option value="">No team assignment</option>
-                                        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="pt-4 flex justify-end">
-                                    <button type="submit" disabled={isCreatingUser} className="inline-flex justify-center items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                                        {isCreatingUser ? 'Creating...' : 'Create Valid Account'}
-                                    </button>
-                                </div>
-                            </form>
+
+                                {isLoadingUsers ? (
+                                    <div className="flex flex-col items-center justify-center py-10 animate-pulse">
+                                        <div className="w-10 h-10 border-4 border-indigo-100 rounded-full border-t-indigo-500 animate-spin"></div>
+                                        <p className="mt-3 text-xs font-bold text-slate-400 uppercase tracking-widest">Loading user database...</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-slate-100">
+                                                    <th className="pb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">User Details</th>
+                                                    <th className="pb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</th>
+                                                    <th className="pb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Teams</th>
+                                                    <th className="pb-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {users.filter(u => 
+                                                    u.name?.toLowerCase().includes(userSearch.toLowerCase()) || 
+                                                    u.email?.toLowerCase().includes(userSearch.toLowerCase())
+                                                ).map(u => (
+                                                    <tr key={u.id} className="group hover:bg-slate-50/50 transition-colors">
+                                                        <td className="py-4">
+                                                            <div className="flex items-center">
+                                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold mr-3">
+                                                                    {u.name?.charAt(0) || '?'}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-slate-900">{u.name}</p>
+                                                                    <p className="text-xs text-slate-500">{u.email}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-4">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest ${u.role === 'Admin' ? 'bg-purple-50 text-purple-600 border border-purple-100' : u.role === 'Team Lead' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
+                                                                {u.role}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-4">
+                                                            <p className="text-xs text-slate-500 truncate max-w-[150px]" title={u.team_names}>
+                                                                {u.team_names || <span className="italic text-slate-300">No teams</span>}
+                                                            </p>
+                                                        </td>
+                                                        <td className="py-4 text-right">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    setSelectedUserForPassword(u);
+                                                                    setShowAdminResetPassword(true);
+                                                                }}
+                                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                                title="Reset Password"
+                                                            >
+                                                                <Lock className="w-4 h-4" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {users.length === 0 && (
+                                            <div className="text-center py-10 text-slate-400 text-sm italic">No users found in database</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -921,7 +1049,10 @@ const Settings = () => {
                                         </button>
                                     </div>
                                 </div>
+                                 </div>
                             </div>
+                        </div>
+                    )}
 
                             {isLoadingReports ? (
                                 <div className="flex flex-col items-center justify-center py-20 animate-pulse">
@@ -1046,6 +1177,70 @@ const Settings = () => {
                                 {isSavingMissingReason ? 'Saving...' : 'Save Reason'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            {showAdminResetPassword && selectedUserForPassword && (
+                <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-200">
+                        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Reset User Password</h3>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Updating password for <span className="font-bold text-indigo-600">{selectedUserForPassword.name}</span>
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowAdminResetPassword(false);
+                                    setAdminNewPassword('');
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleAdminPasswordReset}>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
+                                        New Account Password
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={adminNewPassword}
+                                        onChange={(e) => setAdminNewPassword(e.target.value)}
+                                        required
+                                        minLength={8}
+                                        placeholder="Enter at least 8 characters"
+                                        className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 outline-none transition-all"
+                                        autoFocus
+                                    />
+                                    <p className="mt-2 text-[10px] text-slate-500 italic">
+                                        The user will need to use this new password for their next login.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowAdminResetPassword(false);
+                                        setAdminNewPassword('');
+                                    }}
+                                    className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSavingAdminPassword || adminNewPassword.length < 8}
+                                    className="px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-all shadow-md active:scale-95"
+                                >
+                                    {isSavingAdminPassword ? 'Updating...' : 'Set New Password'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

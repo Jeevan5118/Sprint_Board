@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { importData, createUser } from '../controllers/adminController.js';
+import { importData, createUser, getUsers, updateUserPassword } from '../controllers/adminController.js';
 import { protect } from '../middlewares/authMiddleware.js';
 import { requireRole } from '../middlewares/roleMiddleware.js';
 import { upload } from '../middlewares/uploadMiddleware.js';
@@ -11,5 +11,7 @@ router.use(requireRole(['Admin']));
 
 router.post('/import/csv', upload.single('file'), importData);
 router.post('/users', createUser);
+router.get('/users', getUsers);
+router.put('/users/:userId/password', updateUserPassword);
 
 export default router;
