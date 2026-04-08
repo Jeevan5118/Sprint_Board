@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
     DndContext,
     useDroppable,
@@ -14,6 +14,7 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
+import { Search, Filter, X, ChevronDown, User } from 'lucide-react';
 import TaskCard from '../components/sprint/TaskCard';
 import TaskDrawer from '../components/sprint/TaskDrawer';
 import TaskModal from '../components/sprint/TaskModal';
@@ -47,30 +48,53 @@ const DroppableColumn = ({ id, tasks, onTaskClick, onDeleteTask }) => {
 
 const SprintBoard = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
+    const location = useLocation();
+    const navigate = useNavigate();
     const { user } = useAuth();
+
     const [tasks, setTasks] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
     const [activeSprint, setActiveSprint] = useState(null);
     const [selectedTask, setSelectedTask] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
     const [activeId, setActiveId] = useState(null);
+
+    // Filtering State
+    const [filteredUserId, setFilteredUserId] = useState(null);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const dropdownRef = useRef(null);
+
     const canManage = user?.role === 'Admin' || user?.role === 'Team Lead';
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 10,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
+    // Handle initial filter from URL
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const userId = params.get('userId');
+        if (userId) setFilteredUserId(userId);
+    }, [location.search]);
+
+    // Handle outside clicks for dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsFilterOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const fetchSprintData = async () => {
         try {
-            const sprintRes = await api.get(`/teams/${teamId}/sprints?is_power_hour=${isPowerHour}`);
+            const [sprintRes, membersRes] = await Promise.all([
+                api.get(`/teams/${teamId}/sprints?is_power_hour=${isPowerHour}`),
+                api.get(`/teams/${teamId}/members`)
+            ]);
+
+            setTeamMembers(membersRes.data);
             const active = sprintRes.data.find(s => s.status === 'Active');
             if (active) {
                 setActiveSprint(active);
@@ -174,64 +198,139 @@ const SprintBoard = ({ isPowerHour = false }) => {
         }
     };
 
-    const getDaysRemaining = (endDate) => {
-        if (!endDate) return null;
-        const diff = new Date(endDate) - new Date();
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-        if (days < 0) return 'Sprint Overdue';
-        if (days === 0) return 'Ends Today';
-        if (days === 1) return 'Ends Tomorrow';
-        return `${days} Days Remaining`;
-    };
-
-    if (loading) return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-primary-blue animate-spin"></div></div>;
-
-    if (!activeSprint) return (
-        <div className="flex flex-col items-center justify-center h-full text-slate-500">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">No Active Sprint</h2>
-            <p>Start a sprint from the Sprints page to see the board.</p>
-        </div>
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 10,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
     );
+
+    const filteredTasks = filteredUserId
+        ? tasks.filter(t => t.assignee_id === filteredUserId)
+        : tasks;
+
+    const filteredMembers = teamMembers.filter(m =>
+        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const selectedMember = teamMembers.find(m => m.id === filteredUserId);
 
     return (
         <div className="flex flex-col h-full space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div>
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">{activeSprint.name} Board</h1>
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                            Live Now
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-4 mt-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                            <span className="text-slate-300">DURATION</span>
-                            <span className="text-slate-600">{new Date(activeSprint.start_date).toLocaleDateString([], { month: 'short', day: 'numeric' })} — {new Date(activeSprint.end_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+            <div className="flex flex-col gap-4 pb-4 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="flex items-center gap-3">
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">{activeSprint.name} Board</h1>
+                            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                Live Now
+                            </span>
                         </div>
-                        <div className="w-px h-3 bg-slate-200"></div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{getDaysRemaining(activeSprint.end_date)}</span>
-                        </div>
-                        <div className="w-px h-3 bg-slate-200"></div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-slate-300">CREATED</span>
-                            <span className="text-slate-500">{new Date(activeSprint.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <div className="flex items-center gap-4 mt-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                                <span className="text-slate-300">DURATION</span>
+                                <span className="text-slate-600">{new Date(activeSprint.start_date).toLocaleDateString([], { month: 'short', day: 'numeric' })} — {new Date(activeSprint.end_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="w-px h-3 bg-slate-200"></div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{getDaysRemaining(activeSprint.end_date)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div className="flex space-x-2">
-                    {canManage && (
-                        <button onClick={() => { setEditingTask(null); setShowTaskModal(true); }} className="btn-primary">+ Create Task</button>
-                    )}
-                    {canManage && (
-                        <button onClick={handleCompleteSprint} className="btn-secondary text-green-700 border-green-300 hover:bg-green-50">Complete Sprint</button>
-                    )}
+                    <div className="flex items-center space-x-3">
+                        {/* Member Filter Dropdown */}
+                        <div className="relative" ref={dropdownRef}>
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border ${filteredUserId ? 'bg-primary-blue/5 border-primary-blue text-primary-blue' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                            >
+                                <Filter className="w-4 h-4" />
+                                {selectedMember ? `Member: ${selectedMember.name}` : 'Filter by Member'}
+                                <ChevronDown className={`w-4 h-4 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isFilterOpen && (
+                                <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                                    <div className="p-2 border-b border-slate-100">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search members..."
+                                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-1 focus:ring-primary-blue outline-none"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                autoFocus
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto py-1">
+                                        <button
+                                            onClick={() => {
+                                                setFilteredUserId(null);
+                                                setIsFilterOpen(false);
+                                                navigate(location.pathname);
+                                            }}
+                                            className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 hover:bg-slate-50 ${!filteredUserId ? 'text-primary-blue font-bold bg-blue-50/50' : 'text-slate-600'}`}
+                                        >
+                                            <Users className="w-4 h-4" /> All Members
+                                        </button>
+                                        <div className="h-px bg-slate-50 my-1"></div>
+                                        {filteredMembers.map(member => (
+                                            <button
+                                                key={member.id}
+                                                onClick={() => {
+                                                    setFilteredUserId(member.id);
+                                                    setIsFilterOpen(false);
+                                                    navigate(`${location.pathname}?userId=${member.id}`);
+                                                }}
+                                                className={`w-full px-4 py-2 text-left text-sm flex items-center gap-3 hover:bg-slate-50 ${filteredUserId === member.id ? 'text-primary-blue font-bold bg-blue-50/50' : 'text-slate-600'}`}
+                                            >
+                                                <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold">
+                                                    {member.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="truncate">{member.name}</p>
+                                                    <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
+                                                </div>
+                                            </button>
+                                        ))}
+                                        {filteredMembers.length === 0 && (
+                                            <p className="px-4 py-6 text-center text-xs text-slate-400">No members found</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {filteredUserId && (
+                            <button
+                                onClick={() => {
+                                    setFilteredUserId(null);
+                                    navigate(location.pathname);
+                                }}
+                                className="p-2 text-slate-400 hover:text-danger-red hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Clear Filter"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        )}
+
+                        <div className="flex space-x-2">
+                            {canManage && (
+                                <button onClick={() => { setEditingTask(null); setShowTaskModal(true); }} className="btn-primary tracking-tight font-black uppercase text-xs italic">+ Create Task</button>
+                            )}
+                            {canManage && (
+                                <button onClick={handleCompleteSprint} className="btn-secondary text-green-700 border-green-300 hover:bg-green-50 tracking-tight font-black uppercase text-xs italic">Complete Sprint</button>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -244,7 +343,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
                 >
                     <div className="flex space-x-6 h-[calc(100vh-14rem)]">
                         {COLUMNS.map(col => (
-                            <DroppableColumn key={col} id={col} tasks={tasks.filter(t => t.status === col)} onTaskClick={handleTaskClick} onDeleteTask={canManage ? handleDeleteTask : null} />
+                            <DroppableColumn key={col} id={col} tasks={filteredTasks.filter(t => t.status === col)} onTaskClick={handleTaskClick} onDeleteTask={canManage ? handleDeleteTask : null} />
                         ))}
                     </div>
                     <DragOverlay>

@@ -160,7 +160,12 @@ const TeamDetails = ({ isPowerHour = false }) => {
                                             {member.name?.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="ml-3">
-                                            <div className="text-sm font-medium text-slate-900">{member.name}</div>
+                                            <Link
+                                                to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${teamId}/sprint-board?userId=${member.id}`}
+                                                className="text-sm font-medium text-slate-900 hover:text-primary-blue transition-colors"
+                                            >
+                                                {member.name}
+                                            </Link>
                                             <div className="text-xs text-slate-500">{member.email}</div>
                                         </div>
                                     </div>
