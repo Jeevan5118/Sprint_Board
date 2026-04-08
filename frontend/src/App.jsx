@@ -52,6 +52,7 @@ function App() {
                 <Route path="/teams/:teamId/sprints" element={<Sprints />} />
                 <Route path="/teams/:teamId/kanban" element={<KanbanBoard />} />
                 <Route path="/teams/:teamId/sprint-board" element={<SprintBoard />} />
+                <Route path="/teams/:teamId/sprint board" element={<Navigate to="/teams/:teamId/sprint-board" replace />} />
 
                 <Route path="/power-hour-teams" element={<Navigate to="/power-hour-projects" replace />} />
                 <Route path="/power-hour-teams/:teamId" element={<Navigate to="/power-hour-projects" replace />} />
