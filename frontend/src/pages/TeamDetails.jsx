@@ -152,7 +152,7 @@ const TeamDetails = ({ isPowerHour = false }) => {
                         {members.length === 0 && (
                             <tr><td colSpan={3} className="px-6 py-6 text-center text-sm text-slate-400">No members yet.</td></tr>
                         )}
-                        {members.map(member => (
+                        {members.filter(m => !!m).map(member => (
                             <tr key={member.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
