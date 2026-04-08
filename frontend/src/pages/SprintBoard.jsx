@@ -250,7 +250,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">{String(activeSprint.name || '')} Board</h1>
+                            <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic">{activeSprint.name} Board</h1>
                             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100 animate-pulse">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                 Live Now
@@ -263,7 +263,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
                             </div>
                             <div className="w-px h-3 bg-slate-200"></div>
                             <div className="flex items-center gap-1.5">
-                                <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{String(getDaysRemaining(activeSprint.end_date) || '')}</span>
+                                <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{getDaysRemaining(activeSprint.end_date)}</span>
                             </div>
                         </div>
                     </div>
@@ -275,7 +275,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all border ${filteredUserId ? 'bg-primary-blue/5 border-primary-blue text-primary-blue' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}
                             >
                                 <Filter className="w-4 h-4" />
-                                {selectedMember ? `Member: ${String(selectedMember.name || '')}` : 'Filter by Member'}
+                                {selectedMember ? `Member: ${selectedMember.name}` : 'Filter by Member'}
                                 <ChevronDown className={`w-4 h-4 transition-transform ${isFilterOpen ? 'rotate-180' : ''}`} />
                             </button>
 
