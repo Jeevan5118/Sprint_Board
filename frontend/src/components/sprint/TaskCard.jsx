@@ -83,7 +83,7 @@ const TaskCard = ({ task, onClick, onDelete, isOverlay }) => {
                             </span>
                             {task.last_updated_by_name && (
                                 <span className="text-[8px] text-slate-300 font-bold uppercase truncate max-w-[40px]">
-                                    {task.last_updated_by_name.split(' ')[0]}
+                                    {task.last_updated_by_name?.split(' ')[0] || ''}
                                 </span>
                             )}
                         </div>
