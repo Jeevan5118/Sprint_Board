@@ -65,9 +65,6 @@ BEGIN
         UNIQUE(target_user_id, audit_date)
     );
 
-    CREATE INDEX IF NOT EXISTS idx_report_audit_comments_audit_date
-        ON report_audit_comments (audit_date);
-
     CREATE TABLE IF NOT EXISTS board_settings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         team_id UUID NOT NULL REFERENCES teams (id) ON DELETE CASCADE,
@@ -135,6 +132,9 @@ BEGIN
         UNIQUE(board_settings_id, from_status, to_status)
     );
 END $$;
+
+CREATE INDEX IF NOT EXISTS idx_report_audit_comments_audit_date
+    ON report_audit_comments (audit_date);
 `;
 
 try {
