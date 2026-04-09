@@ -5,6 +5,7 @@ import { requireRole } from '../middlewares/roleMiddleware.js';
 import projectRoutes from './projectRoutes.js';
 import sprintRoutes from './sprintRoutes.js';
 import taskRoutes from './taskRoutes.js';
+import boardSettingsRoutes from './boardSettingsRoutes.js';
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.put('/:teamId/members/:userId/promote', requireRole(['Admin', 'Team Lead'
 router.use('/:teamId/projects', projectRoutes);
 router.use('/:teamId/sprints', sprintRoutes);
 router.use('/:teamId/tasks', taskRoutes);
+router.use('/:teamId/board-settings', boardSettingsRoutes);
 
 export default router;

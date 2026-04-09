@@ -1,6 +1,7 @@
 import db from '../config/db.js';
 import { createNotification, notifyAdminsAndLeads, notifyUsers } from '../services/notificationService.js';
 import { logTaskHistory, logTaskChanges } from '../services/historyService.js';
+import { getBoardConfig, getBoardFeatureFlags, getStatusValueFromColumnKey } from '../services/boardSettingsService.js';
 
 const toBool = (value) => value === true || value === 'true';
 const normalizeAssigneeIds = (assigneeIds, fallbackAssigneeId = null) => {
@@ -16,11 +17,22 @@ const getTaskLink = (task, teamId) => {
     return task?.sprint_id ? `/teams/${teamId}/sprint-board` : `/teams/${teamId}/kanban`;
 };
 
+const parseFilterJson = (rawFilter) => {
+    if (!rawFilter) return null;
+    try {
+        const parsed = typeof rawFilter === 'string' ? JSON.parse(rawFilter) : rawFilter;
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
 export const getTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const { sprint_id, status, assignee_id, is_power_hour, project_id } = req.query;
+        const { sprint_id, status, assignee_id, is_power_hour, project_id, filter_json } = req.query;
         const isPowerHourBool = toBool(is_power_hour);
+        const parsedFilter = parseFilterJson(filter_json);
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -62,6 +74,35 @@ export const getTasks = async (req, res, next) => {
             query += ` AND (t.assignee_id = $${params.length + 1} OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $${params.length + 1}))`;
             params.push(assignee_id);
         }
+
+        if (parsedFilter) {
+            if (Array.isArray(parsedFilter.priorities) && parsedFilter.priorities.length > 0) {
+                query += ` AND t.priority = ANY($${params.length + 1}::text[])`;
+                params.push(parsedFilter.priorities);
+            }
+            if (Array.isArray(parsedFilter.types) && parsedFilter.types.length > 0) {
+                query += ` AND t.type = ANY($${params.length + 1}::text[])`;
+                params.push(parsedFilter.types);
+            }
+            if (Array.isArray(parsedFilter.statuses) && parsedFilter.statuses.length > 0) {
+                query += ` AND t.status = ANY($${params.length + 1}::text[])`;
+                params.push(parsedFilter.statuses);
+            }
+            if (Array.isArray(parsedFilter.assignee_ids) && parsedFilter.assignee_ids.length > 0) {
+                query += ` AND (
+                    t.assignee_id = ANY($${params.length + 1}::uuid[])
+                    OR EXISTS (
+                        SELECT 1 FROM task_assignees ta
+                        WHERE ta.task_id = t.id AND ta.user_id = ANY($${params.length + 1}::uuid[])
+                    )
+                )`;
+                params.push(parsedFilter.assignee_ids);
+            }
+            if (parsedFilter.search && String(parsedFilter.search).trim()) {
+                query += ` AND (t.title ILIKE $${params.length + 1} OR COALESCE(t.description, '') ILIKE $${params.length + 1})`;
+                params.push(`%${String(parsedFilter.search).trim()}%`);
+            }
+        }
         // Logic 3: Restricted Member visibility
         if (req.user.role === 'Member' && !isPowerHourBool) {
             query += ` AND (t.assignee_id = $${params.length + 1} OR EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = $${params.length + 1}))`;
@@ -79,6 +120,7 @@ export const getKanbanTasks = async (req, res, next) => {
     try {
         const { teamId } = req.params;
         const isPowerHourBool = toBool(req.query.is_power_hour);
+        const boardConfig = await getBoardConfig(teamId, isPowerHourBool, 'kanban');
 
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
@@ -106,12 +148,12 @@ export const getKanbanTasks = async (req, res, next) => {
         query += ' ORDER BY t.sort_order ASC, t.created_at DESC';
         const { rows } = await db.query(query, params);
 
-        const limitsQuery = 'SELECT status_name, wip_limit FROM kanban_column_limits WHERE team_id = $1';
-        const limits = await db.query(limitsQuery, [teamId]);
-
         res.json({
             tasks: rows,
-            limits: limits.rows
+            limits: boardConfig.columns
+                .filter((c) => c.wip_limit !== null && c.wip_limit !== undefined)
+                .map((c) => ({ status_name: getStatusValueFromColumnKey(c.column_key), wip_limit: c.wip_limit })),
+            board_config: boardConfig
         });
     } catch (error) { next(error); }
 };
@@ -341,13 +383,46 @@ export const updateTaskStatus = async (req, res, next) => {
             return res.status(403).json({ message: 'Only Admins or Team Leads can move tasks to Done' });
         }
 
+        const boardType = sprint_id || currentTask.sprint_id ? 'sprint' : 'kanban';
+        const boardConfig = await getBoardConfig(teamId, currentTask.is_power_hour, boardType);
+        const featureFlags = getBoardFeatureFlags();
+
+        // If transition rules are enabled, validate role and required fields
+        if (featureFlags.boardTransitionRulesEnabled && boardConfig.settings.enable_transition_rules) {
+            const matchingRule = boardConfig.transition_rules.find(
+                (r) => r.from_status === currentTask.status && r.to_status === status
+            );
+            if (matchingRule) {
+                const roles = Array.isArray(matchingRule.allowed_roles) ? matchingRule.allowed_roles : [];
+                if (roles.length > 0 && !roles.includes(req.user.role)) {
+                    await db.query('ROLLBACK');
+                    return res.status(403).json({ message: `Transition ${currentTask.status} -> ${status} is not allowed for ${req.user.role}` });
+                }
+
+                const required = Array.isArray(matchingRule.required_fields) ? matchingRule.required_fields : [];
+                if (required.length > 0) {
+                    const fullTask = await db.query(
+                        'SELECT assignee_id, story_points, due_date, description FROM tasks WHERE id = $1',
+                        [id]
+                    );
+                    const row = fullTask.rows[0] || {};
+                    const missing = required.filter((field) => {
+                        const value = row[field];
+                        return value === null || value === undefined || value === '';
+                    });
+                    if (missing.length > 0) {
+                        await db.query('ROLLBACK');
+                        return res.status(400).json({ message: `Required before moving to ${status}: ${missing.join(', ')}` });
+                    }
+                }
+            }
+        }
+
         // If this is a Kanban task move (no sprint), check WIP limits
         if (!sprint_id && !currentTask.sprint_id) {
-            const wipQuery = 'SELECT wip_limit FROM kanban_column_limits WHERE team_id = $1 AND status_name = $2';
-            const wipResult = await db.query(wipQuery, [teamId, status]);
-
-            if (wipResult.rows.length > 0 && wipResult.rows[0].wip_limit > 0) {
-                const limit = wipResult.rows[0].wip_limit;
+            const mappedColumn = boardConfig.columns.find((c) => getStatusValueFromColumnKey(c.column_key) === status || c.display_name === status);
+            if (mappedColumn && mappedColumn.wip_limit > 0) {
+                const limit = mappedColumn.wip_limit;
                 const countResult = await db.query(
                     'SELECT COUNT(*) FROM tasks WHERE team_id = $1 AND sprint_id IS NULL AND status = $2 AND id != $3',
                     [teamId, status, id]

@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { X, User, Flag, Tag, Calendar, Hash, FolderOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { getColumnStatus } from '../../utils/boardStyles';
 
 const TYPES = ['Task', 'Bug', 'Feature', 'Story'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const STATUSES = ['Backlog', 'To Do', 'In Progress', 'Review', 'Done'];
 
-const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask = null, isPowerHour = false, defaultProjectId = '' }) => {
+const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask = null, isPowerHour = false, defaultProjectId = '', boardConfig = null }) => {
     const { user } = useAuth();
     const [members, setMembers] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -94,6 +95,8 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
     const priorityColors = {
         Low: 'text-green-600', Medium: 'text-blue-600', High: 'text-orange-500', Urgent: 'text-red-600'
     };
+    const statusOptions = (boardConfig?.columns || []).map(getColumnStatus).filter(Boolean);
+    const availableStatuses = statusOptions.length > 0 ? [...new Set(statusOptions)] : STATUSES;
 
     if (!isOpen) return null;
 
@@ -152,7 +155,7 @@ const TaskModal = ({ isOpen, onClose, onSaved, teamId, sprintId = null, editTask
                         <div>
                             <label className="label-field">Status</label>
                             <select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="input-field">
-                                {STATUSES.map(s => (
+                                {availableStatuses.map(s => (
                                     <option key={s} disabled={s === 'Done' && user?.role === 'Member' && !isPowerHour}>
                                         {s} {s === 'Done' && user?.role === 'Member' && !isPowerHour ? '(Review Req.)' : ''}
                                     </option>

@@ -4,8 +4,9 @@ import api from '../../api/axios';
 import FilePreviewModal from '../common/FilePreviewModal';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
+import { resolveTaskCardStyle } from '../../utils/boardStyles';
 
-const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
+const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit, boardConfig }) => {
     const { teamId: paramTeamId } = useParams();
     const teamId = task?.team_id || paramTeamId;
     const withPowerHour = (path) => {
@@ -128,6 +129,7 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
     if (!isOpen || !task) return null;
 
     const taskProject = projects.find(p => p.id === task.project_id);
+    const cardStyle = resolveTaskCardStyle(task, boardConfig);
 
     return (
         <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col animate-in slide-in-from-right">
@@ -231,10 +233,14 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit }) => {
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Status</label>
-                                            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold border
-                                                ${task.status === 'Done' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                                    task.status === 'In Progress' ? 'bg-sky-50 text-sky-700 border-sky-100' :
-                                                        'bg-slate-50 text-slate-700 border-slate-100'}`}>
+                                            <span
+                                                className="inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-bold border"
+                                                style={{
+                                                    backgroundColor: cardStyle.status?.bg_color,
+                                                    color: cardStyle.status?.text_color,
+                                                    borderColor: cardStyle.status?.border_color
+                                                }}
+                                            >
                                                 {task.status}
                                             </span>
                                         </div>
