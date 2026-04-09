@@ -657,9 +657,9 @@ const Settings = () => {
                                     </h2>
                                     <p className="text-xs text-emerald-600 font-medium mt-1">Track daily reports and identify missing updates</p>
                                 </div>
-                                <div className="w-full bg-white/90 border border-emerald-200 rounded-2xl p-3 sm:p-4 shadow-sm space-y-3">
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-                                        <div className="relative group lg:col-span-4">
+                                <div className="w-full bg-white/90 border border-emerald-200 rounded-2xl p-3 md:p-4 shadow-sm space-y-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
+                                        <div className="relative group md:col-span-4">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <Calendar className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                             </div>
@@ -697,22 +697,22 @@ const Settings = () => {
                                                 />
                                             )}
                                         </div>
-                                        <div className="lg:col-span-8 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full">
+                                        <div className="md:col-span-8 flex bg-emerald-50 p-1 rounded-xl border border-emerald-100 w-full h-full min-h-[42px]">
                                             <button
                                                 onClick={() => fetchGlobalReports('Report', selectedDate, periodFilter, reportSearch)}
-                                                className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
+                                                className={`flex-1 px-3 py-2.5 text-xs md:text-sm font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Report' ? 'bg-emerald-600 text-white shadow-md' : 'text-emerald-700 hover:bg-emerald-100'}`}
                                             >
                                                 Reports
                                             </button>
                                             <button
                                                 onClick={() => fetchGlobalReports('Work', selectedDate, periodFilter, reportSearch)}
-                                                className={`flex-1 px-3 py-2 text-xs font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'}`}
+                                                className={`flex-1 px-3 py-2.5 text-xs md:text-sm font-bold uppercase tracking-wide whitespace-nowrap rounded-lg transition-all ${reportFilter === 'Work' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-700 hover:bg-blue-100'}`}
                                             >
                                                 Work
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                         {['day', 'week', 'month', 'year'].map((p) => (
                                             <button
                                                 key={p}
@@ -729,8 +729,8 @@ const Settings = () => {
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-                                        <div className="relative group lg:col-span-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-stretch">
+                                        <div className="relative group md:col-span-8">
                                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                                 <Search className="h-4 w-4 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                                             </div>
@@ -747,7 +747,7 @@ const Settings = () => {
                                         </div>
                                         <button
                                             onClick={() => fetchGlobalReports(reportFilter, selectedDate, periodFilter, reportSearch)}
-                                            className="lg:col-span-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-emerald-700 text-white hover:bg-emerald-800 transition-colors"
+                                            className="md:col-span-2 w-full h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-wide bg-emerald-700 text-white hover:bg-emerald-800 transition-colors"
                                         >
                                             Search
                                         </button>
@@ -756,7 +756,7 @@ const Settings = () => {
                                                 setReportSearch('');
                                                 fetchGlobalReports(reportFilter, selectedDate, periodFilter, '');
                                             }}
-                                            className="lg:col-span-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wide bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+                                            className="md:col-span-2 w-full h-10 px-4 rounded-xl text-xs font-bold uppercase tracking-wide bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
                                         >
                                             Clear
                                         </button>
@@ -787,7 +787,7 @@ const Settings = () => {
                                                         <CheckCircle2 className="w-6 h-6" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                                <div className="mt-4 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
                                                     {submittedMembers.map(m => (
                                                         <span key={m.id} className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-1 rounded-md border border-emerald-100/50">{m.name}</span>
                                                     ))}
@@ -804,7 +804,7 @@ const Settings = () => {
                                                         <AlertCircle className="w-6 h-6" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 flex flex-wrap gap-1.5">
+                                                <div className="mt-4 flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
                                                     {missingWithoutReason.map(m => (
                                                         <button
                                                             key={m.id}
@@ -829,7 +829,7 @@ const Settings = () => {
                                                         <FileText className="w-6 h-6" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 space-y-2">
+                                                <div className="mt-4 space-y-2 max-h-28 overflow-y-auto pr-1">
                                                     {missingWithReason.map((m) => (
                                                         <button
                                                             key={m.id}
