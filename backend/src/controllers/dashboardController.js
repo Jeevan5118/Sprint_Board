@@ -22,8 +22,16 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE status = 'Done') as completed,
                 COUNT(*) FILTER (WHERE status != 'Done') as pending,
-                AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400) FILTER (WHERE status = 'Done') as lead_time,
-                COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as weekly_throughput
+                COUNT(*) FILTER (WHERE status = 'Review') as in_review,
+                COUNT(*) FILTER (WHERE due_date < NOW() AND status != 'Done') as overdue,
+                COUNT(*) FILTER (WHERE due_date < NOW() AND status != 'Done') as sla_breach,
+                COUNT(*) FILTER (
+                    WHERE status != 'Done'
+                    AND due_date BETWEEN NOW() AND NOW() + INTERVAL '2 days'
+                ) as at_risk,
+                COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as done_last_7_days,
+                COUNT(*) FILTER (WHERE status = 'Review' AND updated_at < NOW() - INTERVAL '48 hours') as review_backlog,
+                AVG(EXTRACT(EPOCH FROM (NOW() - updated_at)) / 3600) FILTER (WHERE status = 'Review') as review_turnaround_hours
             FROM tasks t
             WHERE (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
             ${userFilter}
@@ -40,8 +48,9 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(tk.id) as total_tasks,
                 COUNT(tk.id) FILTER (WHERE tk.status = 'Done') as done_tasks,
                 COUNT(tk.id) FILTER (WHERE tk.status != 'Done') as pending_tasks,
-                AVG(EXTRACT(EPOCH FROM (tk.updated_at - tk.created_at)) / 86400) FILTER (WHERE tk.status = 'Done') as avg_lead_time,
-                COUNT(tk.id) FILTER (WHERE tk.status = 'Done' AND tk.updated_at > NOW() - INTERVAL '7 days') as throughput
+                COUNT(tk.id) FILTER (WHERE tk.status = 'Review') as in_review_tasks,
+                COUNT(tk.id) FILTER (WHERE tk.due_date < NOW() AND tk.status != 'Done') as overdue_tasks,
+                COUNT(tk.id) FILTER (WHERE tk.status = 'Done' AND tk.updated_at > NOW() - INTERVAL '7 days') as done_last_7_days
             FROM teams t
             LEFT JOIN tasks tk ON t.id = tk.team_id AND (tk.is_power_hour = $1 OR (tk.is_power_hour IS NULL AND $1 = false))
             ${teamMemberJoin}
@@ -85,9 +94,15 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 totalTasks: parseInt(s.total || 0),
                 completed: parseInt(s.completed || 0),
                 pending: parseInt(s.pending || 0),
+                inReview: parseInt(s.in_review || 0),
+                overdue: parseInt(s.overdue || 0),
+                atRisk: parseInt(s.at_risk || 0),
+                reviewBacklog: parseInt(s.review_backlog || 0),
+                slaBreach: parseInt(s.sla_breach || 0),
+                doneLast7Days: parseInt(s.done_last_7_days || 0),
                 progress: s.total > 0 ? Math.round((s.completed / s.total) * 100) : 0,
-                avgLeadTime: parseFloat(s.lead_time || 0).toFixed(1),
-                throughput: parseInt(s.weekly_throughput || 0)
+                completionRate7d: s.total > 0 ? Math.round((parseInt(s.done_last_7_days || 0) / parseInt(s.total || 1)) * 100) : 0,
+                reviewTurnaroundHours: parseFloat(s.review_turnaround_hours || 0).toFixed(1)
             },
             teams: teamsRes.rows.map(t => ({
                 id: t.id,
@@ -96,8 +111,11 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 total: parseInt(t.total_tasks),
                 done: parseInt(t.done_tasks),
                 pending: parseInt(t.pending_tasks),
-                leadTime: parseFloat(t.avg_lead_time || 0).toFixed(1),
-                throughput: parseInt(t.throughput)
+                inReview: parseInt(t.in_review_tasks || 0),
+                overdue: parseInt(t.overdue_tasks || 0),
+                completionRate7d: parseInt(t.total_tasks || 0) > 0
+                    ? Math.round((parseInt(t.done_last_7_days || 0) / parseInt(t.total_tasks || 1)) * 100)
+                    : 0
             })),
             alerts: [
                 ...overdueRes.rows.map(t => ({ id: t.id, type: 'overdue', message: `"${t.title}" is overdue`, link: isPowerHourBool ? '/power-hour-projects' : `/teams/${t.team_id}/sprint-board` })),
