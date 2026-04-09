@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X } from 'lucide-react';
+import { User, Lock, Bell, Users, FileText, Download, Calendar, Search, ArrowUpRight, Clock, Eye, EyeOff, AlertCircle, ChevronDown, ChevronUp, CheckCircle2, X, Trash2 } from 'lucide-react';
 import api from '../api/axios';
 import { toast } from 'react-hot-toast';
 import FilePreviewModal from '../components/common/FilePreviewModal';
@@ -120,6 +120,17 @@ const Settings = () => {
             toast.error(err.response?.data?.message || 'Failed to reset password');
         } finally {
             setIsSavingAdminPassword(false);
+        }
+    };
+
+    const handleDeleteUser = async (userToDelete) => {
+        if (!window.confirm(`Are you sure you want to permanently delete the account for ${userToDelete.name}? This action cannot be undone.`)) return;
+        try {
+            await api.delete(`/admin/users/${userToDelete.id}`);
+            toast.success(`Account for ${userToDelete.name} deleted successfully`);
+            fetchUsers();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to delete user');
         }
     };
 
@@ -413,22 +424,7 @@ const Settings = () => {
                                         </button>
                                     </div>
                                 )}
-                                {user?.role === 'Member' && (
-                                    <div className="pt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 border-dashed">
-                                        <p className="text-xs text-slate-500 font-medium italic">Identity details are managed by Admin. Please contact support for updates.</p>
-                                    </div>
-                                )}
                             </form>
-                            <div className="mt-10 pt-6 border-t border-rose-100">
-                                <h3 className="text-sm font-bold text-rose-900 mb-2">Danger Zone</h3>
-                                <p className="text-[11px] text-slate-500 mb-4">Once you delete your account, there is no going back. Please be certain.</p>
-                                <button
-                                    onClick={() => toast.error('Account deletion requires admin approval. Contact support.')}
-                                    className="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
-                                >
-                                    Delete Account
-                                </button>
-                            </div>
                         </div>
                     )}
 
@@ -615,16 +611,27 @@ const Settings = () => {
                                                             </p>
                                                         </td>
                                                         <td className="py-4 text-right">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedUserForPassword(u);
-                                                                    setShowAdminResetPassword(true);
-                                                                }}
-                                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                                title="Reset Password"
-                                                            >
-                                                                <Lock className="w-4 h-4" />
-                                                            </button>
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setSelectedUserForPassword(u);
+                                                                        setShowAdminResetPassword(true);
+                                                                    }}
+                                                                    className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                                    title="Reset Password"
+                                                                >
+                                                                    <Lock className="w-4 h-4" />
+                                                                </button>
+                                                                {u.id !== user.id && (
+                                                                    <button
+                                                                        onClick={() => handleDeleteUser(u)}
+                                                                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                                        title="Delete User Account"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ))}

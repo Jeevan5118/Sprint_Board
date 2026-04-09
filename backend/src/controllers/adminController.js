@@ -82,6 +82,34 @@ export const updateUserPassword = async (req, res, next) => {
     }
 };
 
+export const deleteUser = async (req, res, next) => {
+    try {
+        const { userId } = req.params;
+
+        // Prevent self-deletion
+        if (req.user.id === parseInt(userId)) {
+            return res.status(400).json({ message: 'You cannot delete your own account' });
+        }
+
+        // Check if user exists
+        const userCheck = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+        if (userCheck.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Prevent deleting other admins (optional, but safer)
+        if (userCheck.rows[0].role === 'Admin') {
+            return res.status(403).json({ message: 'Cannot delete another administrator' });
+        }
+
+        await db.query('DELETE FROM users WHERE id = $1', [userId]);
+
+        res.json({ message: 'User account deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const importData = async (req, res, next) => {
     try {
         if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
