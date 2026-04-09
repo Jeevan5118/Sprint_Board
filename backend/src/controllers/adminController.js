@@ -35,7 +35,7 @@ export const createUser = async (req, res, next) => {
 
         // Create user
         const newUser = await db.query(
-            'INSERT INTO users (full_name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id, full_name as name, email, role, avatar_url',
+            'INSERT INTO users (name, email, password_hash, role) VALUES ($1, LOWER($2), $3, $4) RETURNING id, name, email, role, avatar_url',
             [name, email, passwordHash, role]
         );
 
@@ -48,7 +48,7 @@ export const createUser = async (req, res, next) => {
 export const getUsers = async (req, res, next) => {
     try {
         const result = await db.query(`
-            SELECT u.id, u.full_name as name, u.email, u.role, u.avatar_url, u.created_at,
+            SELECT u.id, u.name, u.email, u.role, u.avatar_url, u.created_at,
                    string_agg(t.name, ', ') as team_names
             FROM users u
             LEFT JOIN team_members tm ON u.id = tm.user_id
