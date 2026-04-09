@@ -235,14 +235,48 @@ const SprintBoard = ({ isPowerHour = false }) => {
         }
     };
 
-    const getDaysRemaining = (endDate) => {
-        if (!endDate) return null;
-        const diff = new Date(endDate) - new Date();
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-        if (days < 0) return 'Sprint Overdue';
-        if (days === 0) return 'Ends Today';
-        if (days === 1) return 'Ends Tomorrow';
-        return `${days} Days Remaining`;
+    const getSprintDurationMeta = (sprint) => {
+        if (!sprint?.start_date || !sprint?.end_date) {
+            return {
+                hasDates: false,
+                totalDays: 0,
+                elapsedDays: 0,
+                remainingDays: 0,
+                progressPercent: 0,
+                progressLabel: 'Schedule not set',
+                rangeLabel: 'Unscheduled',
+                durationLabel: 'No duration',
+            };
+        }
+
+        const now = new Date();
+        const start = new Date(sprint.start_date);
+        const end = new Date(sprint.end_date);
+        const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+        const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+        const todayDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const dayMs = 1000 * 60 * 60 * 24;
+        const totalDays = Math.max(Math.floor((endDay - startDay) / dayMs) + 1, 1);
+        const elapsedDays = Math.min(Math.max(Math.floor((todayDay - startDay) / dayMs) + 1, 0), totalDays);
+        const remainingDays = Math.max(Math.floor((endDay - todayDay) / dayMs), 0);
+        const progressPercent = Math.min(Math.max(Math.round((elapsedDays / totalDays) * 100), 0), 100);
+
+        let progressLabel = `${remainingDays} day${remainingDays === 1 ? '' : 's'} left`;
+        if (todayDay < startDay) progressLabel = 'Sprint not started yet';
+        if (todayDay.getTime() === endDay.getTime()) progressLabel = 'Ends today';
+        if (todayDay > endDay) progressLabel = `Overdue by ${Math.floor((todayDay - endDay) / dayMs)} day(s)`;
+
+        return {
+            hasDates: true,
+            totalDays,
+            elapsedDays,
+            remainingDays,
+            progressPercent,
+            progressLabel,
+            rangeLabel: `${start.toLocaleDateString([], { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString([], { month: 'short', day: 'numeric' })}`,
+            durationLabel: `${totalDays} day sprint`,
+        };
     };
 
     const displayedTasks = useMemo(() => {
@@ -254,6 +288,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
         };
         return tasks.filter((task) => taskMatchesFilter(task, localFilter));
     }, [tasks, filterState]);
+    const sprintDuration = useMemo(() => getSprintDurationMeta(activeSprint), [activeSprint]);
 
     const handleQuickFilterPick = (filter) => {
         if (!filter) {
@@ -339,13 +374,27 @@ const SprintBoard = ({ isPowerHour = false }) => {
                     <div className="flex items-center gap-4 mt-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                             <span className="text-slate-300">Duration</span>
-                            <span className="text-slate-600">{new Date(activeSprint.start_date).toLocaleDateString([], { month: 'short', day: 'numeric' })} - {new Date(activeSprint.end_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                            <span className="text-slate-600">{sprintDuration.rangeLabel}</span>
                         </div>
                         <div className="w-px h-3 bg-slate-200"></div>
                         <div className="flex items-center gap-1.5">
-                            <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{getDaysRemaining(activeSprint.end_date)}</span>
+                            <span className="text-primary-blue bg-primary-blue/5 px-2 py-0.5 rounded-md border border-primary-blue/10">{sprintDuration.progressLabel}</span>
                         </div>
                     </div>
+                    {sprintDuration.hasDates && (
+                        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-lg p-2.5">
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                <span>{sprintDuration.durationLabel}</span>
+                                <span>{sprintDuration.elapsedDays}/{sprintDuration.totalDays} days elapsed</span>
+                            </div>
+                            <div className="mt-2 h-2 rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                    className={`h-2 rounded-full transition-all duration-700 ${sprintDuration.progressPercent >= 100 ? 'bg-emerald-500' : 'bg-primary-blue'}`}
+                                    style={{ width: `${sprintDuration.progressPercent}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex space-x-2">
                     {canManage && (

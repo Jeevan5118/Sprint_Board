@@ -76,7 +76,7 @@ const Sprints = ({ isPowerHour = false }) => {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? '⚡ Power Hour Sprints' : 'Sprints'}</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">{isPowerHour ? 'Power Hour Sprints' : 'Sprints'}</h1>
                     <p className="text-sm text-slate-500 mt-1">Manage timeboxes for {team?.name}</p>
                 </div>
                 {canManage && (
@@ -115,7 +115,7 @@ const Sprints = ({ isPowerHour = false }) => {
                                     <div className="flex flex-col">
                                         <div className="flex items-center text-sm text-slate-700 font-medium">
                                             <Calendar className="w-4 h-4 mr-2 text-slate-400" />
-                                            {sprint.start_date ? `${new Date(sprint.start_date).toLocaleDateString()} — ${sprint.end_date ? new Date(sprint.end_date).toLocaleDateString() : 'TBD'}` : 'Unscheduled'}
+                                            {sprint.start_date ? `${new Date(sprint.start_date).toLocaleDateString()} - ${sprint.end_date ? new Date(sprint.end_date).toLocaleDateString() : 'TBD'}` : 'Unscheduled'}
                                         </div>
                                         <div className="text-[10px] text-slate-400 uppercase font-black mt-1 ml-6">
                                             Created {new Date(sprint.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
