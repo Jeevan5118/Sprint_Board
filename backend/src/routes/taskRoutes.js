@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTasks, getKanbanTasks, createTask, updateTask, updateTaskStatus, deleteTask, getTaskHistory } from '../controllers/taskController.js';
+import { getTasks, getKanbanTasks, createTask, updateTask, updateTaskStatus, deleteTask, getTaskHistory, approveTaskStatus } from '../controllers/taskController.js';
 import { addComment, getComments } from '../controllers/commentController.js';
 import { addTimeLog, getTimeLogs } from '../controllers/timeLogController.js';
 import { toggleAttachment, getAttachments } from '../controllers/uploadController.js';
@@ -21,6 +21,7 @@ router.post('/', createTask);
 
 router.put('/:id', updateTask);
 router.put('/:id/status', updateTaskStatus);
+router.patch('/:id/approve-status', requireRole(['Admin', 'Team Lead']), approveTaskStatus);
 router.delete('/:id', requireRole(['Admin', 'Team Lead']), deleteTask);
 
 // Sub-resources

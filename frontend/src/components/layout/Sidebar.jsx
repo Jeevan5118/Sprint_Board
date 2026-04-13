@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, FolderKanban, Calendar, Bell, Settings, Database, X, Zap } from 'lucide-react';
+import { LayoutDashboard, Users, FolderKanban, Calendar, Bell, Settings, Database, X, Zap, Activity } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -16,7 +16,8 @@ const Sidebar = ({ isOpen, onClose }) => {
             icon: LayoutDashboard
         },
         ...(!isPowerHourMode ? [
-            { name: 'Teams', path: '/teams', icon: Users }
+            { name: 'Teams', path: '/teams', icon: Users },
+            { name: 'Sprints', path: '/sprints', icon: Activity },
         ] : []),
         {
             name: isPowerHourMode ? 'PH Projects' : 'Projects',

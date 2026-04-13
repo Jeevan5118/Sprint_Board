@@ -60,6 +60,13 @@ BEGIN
         ALTER TABLE tasks ADD COLUMN is_power_hour BOOLEAN DEFAULT FALSE;
     END IF;
 
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasks' AND column_name = 'pending_status'
+    ) THEN
+        ALTER TABLE tasks ADD COLUMN pending_status VARCHAR(50) DEFAULT NULL;
+    END IF;
+
     CREATE TABLE IF NOT EXISTS user_uploads (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
         user_id UUID REFERENCES users (id) ON DELETE CASCADE,
@@ -172,7 +179,7 @@ CREATE INDEX IF NOT EXISTS idx_report_audit_comments_audit_date
 export const ensureSchemaReady = pool
     ? pool.query(schemaBootstrapSql)
         .then(() => {
-            console.log('Database compatibility bootstrap complete.');
+            console.log('✅ Database compatibility bootstrap complete. [Review System v1.1.0 ACTIVE]');
         })
         .catch((err) => {
             console.error('Database compatibility bootstrap failed:', err.message);

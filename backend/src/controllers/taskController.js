@@ -37,6 +37,7 @@ export const getTasks = async (req, res, next) => {
         let query = `
             SELECT t.*, p.name AS project_name, u.name AS assignee_name, u.avatar_url AS assignee_avatar,
                    lub.name AS last_updated_by_name,
+                   t.pending_status,
                    COALESCE(taa.assignee_ids, ARRAY[]::uuid[]) AS assignee_ids,
                    COALESCE(taa.assignee_names, ARRAY[]::text[]) AS assignee_names
             FROM tasks t
@@ -284,7 +285,7 @@ export const updateTask = async (req, res, next) => {
             return res.status(400).json({ message: 'No valid fields to update' });
         }
 
-        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $' + (filteredEntries.length + 1);
+        let query = 'UPDATE tasks SET updated_at = CURRENT_TIMESTAMP';
         let params = [];
         let count = 1;
 
@@ -294,8 +295,12 @@ export const updateTask = async (req, res, next) => {
             count++;
         }
 
+        query += `, last_updated_by_id = $${count}`;
+        params.push(req.user.id);
+        count++;
+
         query += ` WHERE id = $${count} AND team_id = $${count + 1} RETURNING *`;
-        params.push(req.user.id, id, teamId);
+        params.push(id, teamId);
 
         const { rows } = await db.query(query, params);
         if (rows.length === 0) return res.status(404).json({ message: 'Task not found' });
@@ -435,10 +440,19 @@ export const updateTaskStatus = async (req, res, next) => {
             }
         }
 
+        let statusUpdateField = 'status';
+        let statusValue = status;
+        let isMemberProposingMove = req.user.role === 'Member' && !currentTask.is_power_hour;
+
+        if (isMemberProposingMove) {
+            statusUpdateField = 'pending_status';
+            statusValue = status;
+        }
+
         const { rows } = await db.query(
-            `UPDATE tasks SET status = $1, sort_order = $2, sprint_id = $3, updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $4 
+            `UPDATE tasks SET ${statusUpdateField} = $1, sort_order = $2, sprint_id = $3, updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $4 
              WHERE id = $5 AND team_id = $6 RETURNING *`,
-            [status, sort_order, sprint_id || null, req.user.id, id, teamId]
+            [statusValue, sort_order, sprint_id || null, req.user.id, id, teamId]
         );
 
         // LOG HISTORY
@@ -538,4 +552,64 @@ export const getTaskHistory = async (req, res, next) => {
         const { rows } = await db.query(query, [id]);
         res.json(rows);
     } catch (error) { next(error); }
+};
+
+export const approveTaskStatus = async (req, res, next) => {
+    try {
+        const { id, teamId } = req.params;
+
+        await db.query('BEGIN');
+
+        // Fetch task to get current pending_status and metadata
+        const { rows: taskRows } = await db.query(
+            'SELECT title, status, pending_status, sprint_id, is_power_hour, creator_id, assignee_id FROM tasks WHERE id = $1 AND team_id = $2',
+            [id, teamId]
+        );
+
+        if (taskRows.length === 0) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const task = taskRows[0];
+        if (!task.pending_status) {
+            await db.query('ROLLBACK');
+            return res.status(400).json({ message: 'No pending status change to approve' });
+        }
+
+        const oldStatus = task.status;
+        const newStatus = task.pending_status;
+
+        // Update status and clear pending_status
+        const { rows: updatedRows } = await db.query(
+            `UPDATE tasks SET status = $1, pending_status = NULL, updated_at = CURRENT_TIMESTAMP, last_updated_by_id = $2 
+             WHERE id = $3 RETURNING *`,
+            [newStatus, req.user.id, id]
+        );
+
+        // LOG HISTORY
+        await logTaskHistory(id, req.user.id, 'status', oldStatus, newStatus);
+        await logTaskHistory(id, req.user.id, 'approval', 'Pending', 'Approved');
+
+        // NOTIFICATIONS
+        const link = getTaskLink(task, teamId);
+        const { rows: actorRow } = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        const actor = actorRow[0]?.name || 'Admin';
+
+        // Notify Assignee
+        if (task.assignee_id && task.assignee_id !== req.user.id) {
+            await createNotification(
+                task.assignee_id,
+                'TaskApproved',
+                `Your status change for "${task.title}" to "${newStatus}" was approved by ${actor}.`,
+                link
+            );
+        }
+
+        await db.query('COMMIT');
+        res.json(updatedRows[0]);
+    } catch (error) {
+        await db.query('ROLLBACK');
+        next(error);
+    }
 };

@@ -18,6 +18,7 @@ const ProjectDetails = lazy(() => import('./pages/ProjectDetails'));
 const Sprints = lazy(() => import('./pages/Sprints'));
 const Timeline = lazy(() => import('./pages/Timeline'));
 const Settings = lazy(() => import('./pages/Settings'));
+const AllSprints = lazy(() => import('./pages/AllSprints'));
 const AdminImport = lazy(() => import('./pages/AdminImport'));
 const FileViewer = lazy(() => import('./pages/FileViewer'));
 const Notifications = lazy(() => import('./pages/Notifications'));
@@ -65,6 +66,7 @@ function App() {
                 <Route path="/power-hour-projects/:projectId" element={<ProjectDetails isPowerHour={true} />} />
 
                 <Route path="/timeline" element={<Timeline />} />
+                <Route path="/sprints" element={<AllSprints />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/admin/import" element={<AdminImport />} />
                 <Route path="/notifications" element={<Notifications />} />

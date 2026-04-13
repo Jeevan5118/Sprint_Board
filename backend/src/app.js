@@ -19,7 +19,7 @@ const app = express();
 
 // Middlewares
 app.use(cors({
-    origin: function(origin, callback) {
+    origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, curl, Postman)
         // And allow any browser origin (reflects it back so credentials work)
         callback(null, origin || '*');
@@ -41,7 +41,7 @@ app.use(async (req, res, next) => {
 
 // API Debug Routes (Temporary)
 app.get('/api/v1/debug/reconcile', reconcileData);
-app.get('/api/v1/version', (req, res) => res.json({ version: '1.0.9-hardened-final', timestamp: '2026-03-27-1010' }));
+app.get('/api/v1/version', (req, res) => res.json({ version: '1.1.0-review-engine', timestamp: '2026-04-13-1800' }));
 
 // API Routes
 app.use('/api/v1', routes);

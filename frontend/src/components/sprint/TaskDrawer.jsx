@@ -5,6 +5,7 @@ import FilePreviewModal from '../common/FilePreviewModal';
 import { toast } from 'react-hot-toast';
 import { useParams } from 'react-router-dom';
 import { resolveTaskCardStyle } from '../../utils/boardStyles';
+import { useAuth } from '../../contexts/AuthContext';
 
 const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit, boardConfig }) => {
     const { teamId: paramTeamId } = useParams();
@@ -28,6 +29,22 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit, boardConfig 
     const [loadingData, setLoadingData] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [previewFile, setPreviewFile] = useState(null);
+    const [isApproving, setIsApproving] = useState(false);
+    const { user } = useAuth();
+    const canApprove = user?.role === 'Admin' || user?.role === 'Team Lead';
+
+    const handleApproveStatus = async () => {
+        try {
+            setIsApproving(true);
+            const { data } = await api.patch(withPowerHour(`/teams/${teamId}/tasks/${task.id}/approve-status`));
+            toast.success("Status change approved!");
+            if (onTaskUpdated) onTaskUpdated(data);
+        } catch (err) {
+            toast.error(err.response?.data?.message || "Approval failed");
+        } finally {
+            setIsApproving(false);
+        }
+    };
     useEffect(() => {
         if (!isOpen || !task || !teamId) return;
 
@@ -241,11 +258,34 @@ const TaskDrawer = ({ isOpen, onClose, task, onTaskUpdated, onEdit, boardConfig 
                                                     borderColor: cardStyle.status?.border_color
                                                 }}
                                             >
-                                                {task.status}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
+
+                                {task.pending_status && task.pending_status !== task.status && (
+                                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                                                <Clock className="w-4 h-4 text-amber-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-amber-900 uppercase tracking-tight">Status Change Pending</p>
+                                                <p className="text-[11px] text-amber-700">Waiting for approval to move to <b>{task.pending_status}</b></p>
+                                            </div>
+                                        </div>
+                                        {canApprove && (
+                                            <button
+                                                onClick={handleApproveStatus}
+                                                disabled={isApproving}
+                                                className="btn-primary py-1.5 px-4 text-xs flex items-center gap-2 shadow-amber-200"
+                                            >
+                                                {isApproving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Loader2 className="w-3 h-3 hidden" />}
+                                                Approve
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
 
                                 <div className="bg-white p-5 rounded-xl border border-slate-200">
                                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest">

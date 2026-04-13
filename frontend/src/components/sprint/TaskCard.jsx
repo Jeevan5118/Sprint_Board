@@ -99,6 +99,12 @@ const TaskCard = ({ task, onClick, onDelete, isOverlay, boardConfig }) => {
                             {task.priority}
                         </span>
                     )}
+                    {task.pending_status && task.pending_status !== task.status && (
+                        <span className="text-[10px] font-black bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded-lg flex items-center gap-1 shadow-sm animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            Review
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center space-x-2">

@@ -193,22 +193,35 @@ const SprintBoard = ({ isPowerHour = false }) => {
             return;
         }
 
-        if (destStatus === 'Done' && user?.role === 'Member') {
+        if (destStatus === 'Done' && user?.role === 'Member' && !isPowerHour) {
             toast.error('Only Admins or Team Leads can mark tasks as Done. Please move to "In Review" first.');
             return;
         }
 
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: destStatus } : t));
+        const isMemberProposing = user?.role === 'Member' && !isPowerHour;
+        const updatePayload = {
+            status: destStatus,
+            sort_order: Date.now(),
+            sprint_id: activeSprint.id
+        };
+
+        // Optimistic update
+        setTasks(prev => prev.map(t => t.id === taskId ? {
+            ...t,
+            status: isMemberProposing ? t.status : destStatus,
+            pending_status: isMemberProposing ? destStatus : null
+        } : t));
+
         try {
-            await api.put(`/teams/${teamId}/tasks/${taskId}/status`, {
-                status: destStatus,
-                sort_order: Date.now(),
-                sprint_id: activeSprint.id
-            });
-            toast.success('Task moved');
+            await api.put(`/teams/${teamId}/tasks/${taskId}/status`, updatePayload);
+            toast.success(isMemberProposing ? 'Status change requested' : 'Task moved');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to move task');
-            setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: sourceStatus } : t));
+            setTasks(prev => prev.map(t => t.id === taskId ? {
+                ...t,
+                status: sourceStatus,
+                pending_status: null
+            } : t));
         }
     };
 
@@ -443,7 +456,7 @@ const SprintBoard = ({ isPowerHour = false }) => {
                             <DroppableColumn
                                 key={col.column_key}
                                 column={col}
-                                tasks={displayedTasks.filter((t) => t.status === getColumnStatus(col))}
+                                tasks={displayedTasks.filter((t) => (t.pending_status || t.status) === getColumnStatus(col))}
                                 swimlaneMode={filterState.swimlane_mode}
                                 onTaskClick={handleTaskClick}
                                 onDeleteTask={canManage ? handleDeleteTask : null}
