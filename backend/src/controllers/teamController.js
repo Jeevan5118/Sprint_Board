@@ -229,3 +229,36 @@ export const deleteTeam = async (req, res, next) => {
         next(error);
     }
 };
+export const getBoardInitData = async (req, res, next) => {
+    try {
+        const { teamId } = req.params;
+        const isPowerHour = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+
+        const [sprintRes, membersRes, configRes] = await Promise.all([
+            db.query(
+                `SELECT * FROM sprints WHERE team_id = $1 AND status = 'Active' AND (is_power_hour = $2 OR (is_power_hour IS NULL AND $2 = false)) LIMIT 1`,
+                [teamId, isPowerHour]
+            ),
+            db.query(
+                `SELECT u.id, u.name, u.email, u.role, u.avatar_url, tm.joined_at
+                 FROM users u
+                 JOIN team_members tm ON u.id = tm.user_id
+                 WHERE tm.team_id = $1
+                 ORDER BY u.name`,
+                [teamId]
+            ),
+            db.query(
+                `SELECT * FROM board_settings WHERE team_id = $1 AND board_type = 'sprint' AND (is_power_hour = $2 OR (is_power_hour IS NULL AND $2 = false))`,
+                [teamId, isPowerHour]
+            )
+        ]);
+
+        res.json({
+            activeSprint: sprintRes.rows[0] || null,
+            members: membersRes.rows || [],
+            boardConfig: configRes.rows[0] || null
+        });
+    } catch (error) {
+        next(error);
+    }
+};

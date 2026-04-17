@@ -118,27 +118,29 @@ const SprintBoard = ({ isPowerHour = false }) => {
 
     const fetchSprintData = async () => {
         try {
-            const sprintRes = await api.get(`/teams/${teamId}/sprints?is_power_hour=${isPowerHour}`);
-            const active = sprintRes.data.find(s => s.status === 'Active');
-            if (active) {
-                setActiveSprint(active);
-                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}&is_power_hour=${isPowerHour}&filter_json=${encodeURIComponent(JSON.stringify(buildFilterPayload()))}`);
-                setTasks(taskRes.data);
-            } else {
-                setActiveSprint(null);
-                setTasks([]);
-            }
-            const [membersRes, configRes] = await Promise.all([
-                api.get(`/teams/${teamId}/members${isPowerHour ? '?is_power_hour=true' : ''}`),
-                api.get(`/teams/${teamId}/board-settings?board_type=sprint&is_power_hour=${isPowerHour}`)
-            ]);
-            setMembers(membersRes.data || []);
-            const cfg = resolveBoardConfig(configRes.data, 'sprint');
+            setLoading(true);
+            // 1. Fetch initialization data (Active Sprint, Members, Board Config) in ONE call
+            const { data: initData } = await api.get(`/teams/${teamId}/board-init?is_power_hour=${isPowerHour}`);
+
+            const active = initData.activeSprint;
+            setActiveSprint(active);
+            setMembers(initData.members || []);
+
+            const cfg = resolveBoardConfig(initData.boardConfig, 'sprint');
             setBoardConfig(cfg);
             if (cfg.settings.swimlane_mode) {
                 setFilterState((prev) => ({ ...prev, swimlane_mode: cfg.settings.swimlane_mode }));
             }
-        } catch {
+
+            // 2. Fetch tasks for the active sprint if it exists
+            if (active) {
+                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}&is_power_hour=${isPowerHour}&filter_json=${encodeURIComponent(JSON.stringify(buildFilterPayload()))}`);
+                setTasks(taskRes.data);
+            } else {
+                setTasks([]);
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
             toast.error('Failed to load Sprint data');
         } finally {
             setLoading(false);
