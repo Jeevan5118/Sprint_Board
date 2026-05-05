@@ -232,13 +232,19 @@ export const deleteTeam = async (req, res, next) => {
 export const getBoardInitData = async (req, res, next) => {
     try {
         const { teamId } = req.params;
-        const isPowerHour = req.query.is_power_hour === 'true' || req.query.is_power_hour === true;
+        const { sprint_id, is_power_hour } = req.query;
+        const isPowerHourBool = is_power_hour === 'true' || is_power_hour === true;
+
+        let sprintQuery = `SELECT * FROM sprints WHERE team_id = $1 AND status = 'Active' AND (is_power_hour = $2 OR (is_power_hour IS NULL AND $2 = false)) LIMIT 1`;
+        let sprintParams = [teamId, isPowerHourBool];
+
+        if (sprint_id) {
+            sprintQuery = `SELECT * FROM sprints WHERE id = $1`;
+            sprintParams = [sprint_id];
+        }
 
         const [sprintRes, membersRes, configRes] = await Promise.all([
-            db.query(
-                `SELECT * FROM sprints WHERE team_id = $1 AND status = 'Active' AND (is_power_hour = $2 OR (is_power_hour IS NULL AND $2 = false)) LIMIT 1`,
-                [teamId, isPowerHour]
-            ),
+            db.query(sprintQuery, sprintParams),
             db.query(
                 `SELECT u.id, u.name, u.email, u.role, u.avatar_url, tm.joined_at
                  FROM users u
@@ -249,12 +255,13 @@ export const getBoardInitData = async (req, res, next) => {
             ),
             db.query(
                 `SELECT * FROM board_settings WHERE team_id = $1 AND board_type = 'sprint' AND (is_power_hour = $2 OR (is_power_hour IS NULL AND $2 = false))`,
-                [teamId, isPowerHour]
+                [teamId, isPowerHourBool]
             )
         ]);
 
         res.json({
-            activeSprint: sprintRes.rows[0] || null,
+            sprint: sprintRes.rows[0] || null,
+            activeSprint: sprintRes.rows[0] || null, // Keep for backward compatibility if needed
             members: membersRes.rows || [],
             boardConfig: configRes.rows[0] || null
         });

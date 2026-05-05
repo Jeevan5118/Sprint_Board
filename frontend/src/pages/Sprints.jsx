@@ -133,8 +133,8 @@ const Sprints = ({ isPowerHour = false }) => {
                                             <CheckCircle className="w-4 h-4 mr-1" /> Complete
                                         </button>
                                     )}
-                                    {sprint.status === 'Active' && (
-                                        <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${teamId}/sprint-board`} className={`py-1 text-xs inline-flex items-center ${isPowerHour ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-none' : 'btn-secondary'}`}>
+                                    {(sprint.status === 'Active' || sprint.status === 'Completed') && (
+                                        <Link to={`/${isPowerHour ? 'power-hour-teams' : 'teams'}/${teamId}/sprint-board?sprintId=${sprint.id}`} className={`py-1 text-xs inline-flex items-center ${isPowerHour ? 'btn-primary bg-amber-500 hover:bg-amber-600 border-none' : 'btn-secondary'}`}>
                                             <LayoutTemplate className="w-3 h-3 mr-1" /> Board
                                         </Link>
                                     )}

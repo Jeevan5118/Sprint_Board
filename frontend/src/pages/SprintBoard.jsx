@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import {
     DndContext,
     useDroppable,
@@ -75,6 +75,10 @@ const DroppableColumn = ({ column, tasks, swimlaneMode, onTaskClick, onDeleteTas
 
 const SprintBoard = ({ isPowerHour = false }) => {
     const { teamId } = useParams();
+    const { search } = useLocation();
+    const queryParams = new URLSearchParams(search);
+    const urlSprintId = queryParams.get('sprintId');
+
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [members, setMembers] = useState([]);
@@ -120,10 +124,11 @@ const SprintBoard = ({ isPowerHour = false }) => {
         try {
             setLoading(true);
             // 1. Fetch initialization data (Active Sprint, Members, Board Config) in ONE call
-            const { data: initData } = await api.get(`/teams/${teamId}/board-init?is_power_hour=${isPowerHour}`);
+            const url = `/teams/${teamId}/board-init?is_power_hour=${isPowerHour}${urlSprintId ? `&sprint_id=${urlSprintId}` : ''}`;
+            const { data: initData } = await api.get(url);
 
-            const active = initData.activeSprint;
-            setActiveSprint(active);
+            const sprint = initData.sprint;
+            setActiveSprint(sprint);
             setMembers(initData.members || []);
 
             const cfg = resolveBoardConfig(initData.boardConfig, 'sprint');
@@ -132,9 +137,9 @@ const SprintBoard = ({ isPowerHour = false }) => {
                 setFilterState((prev) => ({ ...prev, swimlane_mode: cfg.settings.swimlane_mode }));
             }
 
-            // 2. Fetch tasks for the active sprint if it exists
-            if (active) {
-                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${active.id}&is_power_hour=${isPowerHour}&filter_json=${encodeURIComponent(JSON.stringify(buildFilterPayload()))}`);
+            // 2. Fetch tasks for the sprint if it exists
+            if (sprint) {
+                const taskRes = await api.get(`/teams/${teamId}/tasks?sprint_id=${sprint.id}&is_power_hour=${isPowerHour}&filter_json=${encodeURIComponent(JSON.stringify(buildFilterPayload()))}`);
                 setTasks(taskRes.data);
             } else {
                 setTasks([]);

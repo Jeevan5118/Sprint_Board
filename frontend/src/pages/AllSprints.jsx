@@ -204,9 +204,9 @@ const AllSprints = () => {
                                                                 <CheckCircle className="w-3 h-3" /> Complete
                                                             </button>
                                                         )}
-                                                        {sprint.status === 'Active' && (
+                                                        {(sprint.status === 'Active' || sprint.status === 'Completed') && (
                                                             <Link
-                                                                to={`/teams/${team.id}/sprint-board`}
+                                                                to={`/teams/${team.id}/sprint-board?sprintId=${sprint.id}`}
                                                                 className="text-xs font-bold bg-primary-blue text-white px-2.5 py-1 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
                                                             >
                                                                 <LayoutTemplate className="w-3 h-3" /> Board

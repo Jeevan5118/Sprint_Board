@@ -20,20 +20,28 @@ export const getDashboardAnalytics = async (req, res, next) => {
         const statsQuery = `
             SELECT 
                 COUNT(*) as total,
-                COUNT(*) FILTER (WHERE status = 'Done') as completed,
-                COUNT(*) FILTER (WHERE status != 'Done') as pending,
-                COUNT(*) FILTER (WHERE status = 'Review') as in_review,
-                COUNT(*) FILTER (WHERE due_date < NOW() AND status != 'Done') as overdue,
-                COUNT(*) FILTER (WHERE due_date < NOW() AND status != 'Done') as sla_breach,
+                COUNT(*) FILTER (WHERE t.status = 'Done') as completed,
+                COUNT(*) FILTER (WHERE t.status != 'Done') as pending,
+                COUNT(*) FILTER (WHERE t.status = 'Review') as in_review,
                 COUNT(*) FILTER (
-                    WHERE status != 'Done'
-                    AND due_date BETWEEN NOW() AND NOW() + INTERVAL '2 days'
+                    WHERE t.due_date < NOW() 
+                    AND t.status != 'Done'
+                    AND (t.sprint_id IS NULL OR EXISTS (SELECT 1 FROM sprints s WHERE s.id = t.sprint_id AND s.status != 'Completed'))
+                ) as overdue,
+                COUNT(*) FILTER (
+                    WHERE t.due_date < NOW() 
+                    AND t.status != 'Done'
+                    AND (t.sprint_id IS NULL OR EXISTS (SELECT 1 FROM sprints s WHERE s.id = t.sprint_id AND s.status != 'Completed'))
+                ) as sla_breach,
+                COUNT(*) FILTER (
+                    WHERE t.status != 'Done'
+                    AND t.due_date BETWEEN NOW() AND NOW() + INTERVAL '2 days'
                 ) as at_risk,
-                COUNT(*) FILTER (WHERE status = 'Done' AND updated_at > NOW() - INTERVAL '7 days') as done_last_7_days,
-                COUNT(*) FILTER (WHERE status = 'Review' AND updated_at < NOW() - INTERVAL '48 hours') as review_backlog,
-                AVG(EXTRACT(EPOCH FROM (NOW() - updated_at)) / 3600) FILTER (WHERE status = 'Review') as review_turnaround_hours
+                COUNT(*) FILTER (WHERE t.status = 'Done' AND t.updated_at > NOW() - INTERVAL '7 days') as done_last_7_days,
+                COUNT(*) FILTER (WHERE t.status = 'Review' AND t.updated_at < NOW() - INTERVAL '48 hours') as review_backlog,
+                AVG(EXTRACT(EPOCH FROM (NOW() - t.updated_at)) / 3600) FILTER (WHERE t.status = 'Review') as review_turnaround_hours
             FROM tasks t
-            WHERE (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
+            WHERE (t.is_power_hour = $1 OR (t.is_power_hour IS NULL AND $1 = false))
             ${userFilter}
             ${memberFilter}
         `;
@@ -49,7 +57,11 @@ export const getDashboardAnalytics = async (req, res, next) => {
                 COUNT(tk.id) FILTER (WHERE tk.status = 'Done') as done_tasks,
                 COUNT(tk.id) FILTER (WHERE tk.status != 'Done') as pending_tasks,
                 COUNT(tk.id) FILTER (WHERE tk.status = 'Review') as in_review_tasks,
-                COUNT(tk.id) FILTER (WHERE tk.due_date < NOW() AND tk.status != 'Done') as overdue_tasks,
+                COUNT(tk.id) FILTER (
+                    WHERE tk.due_date < NOW() 
+                    AND tk.status != 'Done'
+                    AND (tk.sprint_id IS NULL OR EXISTS (SELECT 1 FROM sprints s WHERE s.id = tk.sprint_id AND s.status != 'Completed'))
+                ) as overdue_tasks,
                 COUNT(tk.id) FILTER (WHERE tk.status = 'Done' AND tk.updated_at > NOW() - INTERVAL '7 days') as done_last_7_days
             FROM teams t
             LEFT JOIN tasks tk ON t.id = tk.team_id AND (tk.is_power_hour = $1 OR (tk.is_power_hour IS NULL AND $1 = false))
@@ -62,19 +74,24 @@ export const getDashboardAnalytics = async (req, res, next) => {
 
         // 3. Alerts & Timeline
         const overdueRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date < NOW() AND status != 'Done' 
-             AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
-             ${userFilter.replace('team_id IN', 'team_id IN')} 
-             ${isMember && !isWorkspaceWide ? 'AND assignee_id = $2' : ''} 
-             ORDER BY due_date ASC LIMIT 5`,
+            `SELECT t.id, t.title, t.due_date, t.team_id 
+             FROM tasks t 
+             WHERE t.due_date < NOW() AND t.status != 'Done' 
+             AND (t.sprint_id IS NULL OR EXISTS (SELECT 1 FROM sprints s WHERE s.id = t.sprint_id AND s.status != 'Completed'))
+             AND (t.is_power_hour = $1 OR (t.is_power_hour IS NULL AND $1 = false))
+             ${userFilter} 
+             ${isMember && !isWorkspaceWide ? 'AND t.assignee_id = $2' : ''} 
+             ORDER BY t.due_date ASC LIMIT 5`,
             baseParams
         );
         const upcomingRes = await db.query(
-            `SELECT id, title, due_date, team_id FROM tasks WHERE due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND status != 'Done' 
-             AND (is_power_hour = $1 OR (is_power_hour IS NULL AND $1 = false))
+            `SELECT t.id, t.title, t.due_date, t.team_id 
+             FROM tasks t 
+             WHERE t.due_date BETWEEN NOW() AND NOW() + INTERVAL '3 days' AND t.status != 'Done' 
+             AND (t.is_power_hour = $1 OR (t.is_power_hour IS NULL AND $1 = false))
              ${userFilter} 
-             ${isMember && !isWorkspaceWide ? 'AND assignee_id = $2' : ''} 
-             ORDER BY due_date ASC LIMIT 5`,
+             ${isMember && !isWorkspaceWide ? 'AND t.assignee_id = $2' : ''} 
+             ORDER BY t.due_date ASC LIMIT 5`,
             baseParams
         );
         const activityRes = await db.query(
